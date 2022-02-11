@@ -25,6 +25,8 @@ Of course, at large levels of nesting, the use of the Closure Table leads to an 
 ## Cautions
 The code provided is intended for testing by developers and is not recommended for use in production projects. Only general tests were carried out. The risk of using the code lies entirely with you.
 
+Don't access treenode fields directly! Most of them have been removed as unnecessary. Use functions documented in the [source application](https://github.com/fabiocaccamo/django-treenode).
+
 ## Dependencies
 The code provided is not a reusable application. To use, run `pip install six`
 
