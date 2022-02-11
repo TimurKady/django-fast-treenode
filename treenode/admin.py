@@ -19,13 +19,8 @@ class NoPkDescOrderedChangeList(ChangeList):
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        print(qs)
-        print([i.tn_order for i in qs])
         order = sorted([node for node in qs], key=lambda x: x.tn_order)
-        print(order)
-        print([i.tn_order for i in qs])
         pk_list = [node.pk for node in order]
-
         table = self.model._meta.db_table
         clauses = ' '.join(
             ['WHEN %s.id=%s THEN %s' % (table, pk, i)
@@ -34,8 +29,6 @@ class NoPkDescOrderedChangeList(ChangeList):
         order = 'CASE %s END' % clauses
         queryset = self.model.objects.filter(pk__in=pk_list).extra(
             select={'ordering': order}, order_by=('ordering',))
-        print(queryset)
-        print([i.tn_order for i in queryset])
         return queryset.select_related('tn_parent')
 
 
