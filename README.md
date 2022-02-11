@@ -11,8 +11,10 @@ However, this application has a number of undeniable shortcomings:
 * the problem of ordering elements by priority inside the parent node has not been resolved.
 
 My idea was to solve these problems by combining the adjacency list with the Closure Table. Main advantages:
-* as before, most queries are performed with a single call to the database;
-* bulk operations are fully supported;
+* the Closure Model is generated automatically;
+* Most requests are satisfied in one image to the database;
+* inserting a new element takes two images to the database;
+* bulk-operations are supported;
 * the cost of creating a new dependency is reduced many times;
 * additionally, the package includes a tree view widget for the `tn_parent` field in the change form.
 
