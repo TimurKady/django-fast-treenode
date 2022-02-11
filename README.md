@@ -25,6 +25,9 @@ Of course, at large levels of nesting, the use of the Closing Table leads to an 
 ## Cautions
 The code provided is intended for testing by developers and is not recommended for use in production projects. Only general tests were carried out. The risk of using the code lies entirely with you.
 
+## Dependencies
+The code provided is not a reusable application. To use, run `pip install six`
+
 ## Prospects
 Future plans:
 * restore caching;
