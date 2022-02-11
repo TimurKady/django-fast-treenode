@@ -12,10 +12,12 @@ However, this application has a number of undeniable shortcomings:
 
 My idea was to solve these problems by combining the adjacency list with the Closure Table. Main advantages:
 * the Closure Model is generated automatically;
-* Most requests are satisfied in one image to the database;
+* maintained compatibility with the original package at the level of documented functions;
+* most requests are satisfied in one image to the database;
 * inserting a new element takes two images to the database;
 * bulk-operations are supported;
 * the cost of creating a new dependency is reduced many times;
+* useful functionality added for some methods (see source code);
 * additionally, the package includes a tree view widget for the `tn_parent` field in the change form.
 
 Of course, at large levels of nesting, the use of the Closing Table leads to an increase in resource costs. But at the same time, the combined scheme still generally outperforms the original application in terms of performance.
