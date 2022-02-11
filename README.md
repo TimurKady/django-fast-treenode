@@ -1,4 +1,4 @@
-# Treenode with closure table
+# New Treenode: combination of Adjacency List and Closure Table
 ## Debut idea
 This is a modification of the reusable [django-treenode](https://github.com/fabiocaccamo/django-treenode) application developed by [Fabio Caccamo](https://github.com/fabiocaccamo).
 The original application has significant advantages over other analogues, and indeed, is one of the best implementations of support for hierarchical structures for Django. 
@@ -20,7 +20,7 @@ My idea was to solve these problems by combining the adjacency list with the Clo
 * useful functionality added for some methods (see source code);
 * additionally, the package includes a tree view widget for the `tn_parent` field in the change form.
 
-Of course, at large levels of nesting, the use of the Closing Table leads to an increase in resource costs. But at the same time, the combined scheme still generally outperforms the original application in terms of performance.
+Of course, at large levels of nesting, the use of the Closure Table leads to an increase in resource costs. But at the same time, the combined scheme still generally outperforms the original application in terms of performance.
 
 ## Cautions
 The code provided is intended for testing by developers and is not recommended for use in production projects. Only general tests were carried out. The risk of using the code lies entirely with you.
