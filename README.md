@@ -59,8 +59,9 @@ Returns a queryset of nodes ordered by `tn_priority` each node. For example:
 - N.1.1.2
 - N.2
 - N.2.1
-...
+- ...
 
+This method uses a lot of memory and may be changed in the future. Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table.
 
 ```
 self.get_path(prefix='', suffix='', delimiter='.', format_str='')
