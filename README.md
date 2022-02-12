@@ -33,7 +33,7 @@ You can easily find additional information on your own on the Internet.
 ## Interface changes
 The following methods have been added or changed:
 
-### update_tree
+### update_tree()
 ```
 cls.update_tree()
 ```
@@ -53,13 +53,13 @@ self.get_descendants_tree_display(include_self=False, depth=None)
 ```
 These functions now take two extra arguments each insert `include_self=False` and `depth=None`. Default values allow these methods to be called in the old style.
 
-### get_tree
+### get_tree()
 ```
 cls.get_tree(instance=None)
 ```
 Returns an n-dimensional dictionary representing the model tree. Each node contains a `"children"=[]` key with a list of nested dictionaries of child nodes.
 
-### get_ordered_queryset
+### get_ordered_queryset()
 ```
 cls.get_ordered_queryset()
 ```
@@ -74,7 +74,7 @@ Returns a queryset of nodes ordered by `tn_priority` each node. For example:
 
 This method uses a lot of memory and may be changed in the future. Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table.
 
-### get_path
+### get_path()
 ```
 self.get_path(prefix='', suffix='', delimiter='.', format_str='')
 ```
