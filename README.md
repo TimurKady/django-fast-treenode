@@ -102,7 +102,7 @@ The code provided is not a reusable application. To use, run `pip install six`
 
 ## Credits
 This software contains, uses, including in a modified form:
-*  [django-treenode](https://github.com/fabiocaccamo/django-treenode) by [Fabio Caccamo];
+*  [django-treenode](https://github.com/fabiocaccamo/django-treenode) by [Fabio Caccamo](https://github.com/fabiocaccamo);
 *  [Select2-to-Tree](https://github.com/clivezhg/select2-to-tree) Select2 extension by [clivezhg](https://github.com/clivezhg)
 
 Special thanks to [Mathieu Leplatre](https://blog.mathieu-leplatre.info/pages/about.html) for the advice used in writing this application
