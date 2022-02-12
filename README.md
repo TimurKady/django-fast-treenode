@@ -3,7 +3,7 @@
 This is a modification of the reusable [django-treenode](https://github.com/fabiocaccamo/django-treenode) application developed by [Fabio Caccamo](https://github.com/fabiocaccamo).
 The original application has significant advantages over other analogues, and indeed, is one of the best implementations of support for hierarchical structures for Django. 
 
-Fabio's idea was to use the Adjacency List method to store the data tree. The most probable and time-consuming requests are calculated in advance and stored in the database. Also, most requests are cached after the request. As a result, query processing is carried out in one call to the database or without it at all.
+Fabio's idea was to use the Adjacency List method to store the data tree. The most probable and time-consuming requests are calculated in advance and stored in the database. Also, most requests are cached. As a result, query processing is carried out in one call to the database or without it at all.
 
 However, this application has a number of undeniable shortcomings:
 * the selected pre-calculations scheme entails high costs for adding a new element;
@@ -13,8 +13,8 @@ However, this application has a number of undeniable shortcomings:
 My idea was to solve these problems by combining the adjacency list with the Closure Table. Main advantages:
 * the Closure Model is generated automatically;
 * maintained compatibility with the original package at the level of documented functions;
-* most requests are satisfied in one image to the database;
-* inserting a new element takes two images to the database;
+* most requests are satisfied in one call to the database;
+* inserting a new element takes two calls to the database;
 * bulk-operations are supported;
 * the cost of creating a new dependency is reduced many times;
 * useful functionality added for some methods (e.g.  the `include_self=False` and `depth` parameters has been added to functions that return lists/querysets);
