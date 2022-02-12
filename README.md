@@ -68,13 +68,14 @@ Don't access treenode fields directly! Most of them have been removed as unneces
 ## Dependencies
 The code provided is not a reusable application. To use, run `pip install six`
 
-## Prospects
+## Plans for the future and prospects
 Future plans:
 * restore caching;
 * add the ability to determine the priority of the parent by any field, for example, by creation date or alphabetical order;
 * finish testing;
 * issue in the form of a reusable application;
 * add search functionality;
-* perform final code optimization.
+* perform final code optimization;
+* live happily until death.
 
 Wishes are welcome.
