@@ -507,20 +507,17 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
         """Convert Class Object to python dict"""
 
         result = dict()
-
         if not hasattr(instance, '__dict__'):
             return instance
-
         new_subdic = dict(vars(instance))
         for key, value in new_subdic.items():
             if key.startswith('_') or key in exclude:
                 continue
             result.update({key: self.object2dict(value, exclude)})
-
         childs = instance.tn_children.all()
         if childs.count() > 0:
             result.update({
-                'tn_children': [
+                'children': [
                     obj.object2dict(obj, exclude)
                     for obj in childs.all()]
             })
