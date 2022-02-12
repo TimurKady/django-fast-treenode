@@ -58,7 +58,9 @@ Returns a queryset of nodes ordered by `tn_priority` each node. For example:
 - N.1.1.1
 - N.1.1.2
 - N.2
-etc.
+- N.2.1
+...
+
 
 ```
 self.get_path(prefix='', suffix='', delimiter='.', format_str='')
