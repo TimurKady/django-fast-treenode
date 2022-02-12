@@ -31,6 +31,8 @@ You can get a basic understanding of what is a Closure Table from:
 You can easily find additional information on your own on the Internet.
 
 ## Interface changes
+The following methods have been added or changed:
+
 ### update_tree
 ```
 cls.update_tree()
