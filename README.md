@@ -17,7 +17,7 @@ My idea was to solve these problems by combining the adjacency list with the Clo
 * inserting a new element takes two images to the database;
 * bulk-operations are supported;
 * the cost of creating a new dependency is reduced many times;
-* useful functionality added for some methods (e.g.  the include_self=False and depth parameters has been added to functions that return lists/query sets);
+* useful functionality added for some methods (e.g.  the `include_self=False` and `depth` parameters has been added to functions that return lists/querysets);
 * additionally, the package includes a tree view widget for the `tn_parent` field in the change form.
 
 Of course, at large levels of nesting, the use of the Closure Table leads to an increase in resource costs. But at the same time, the combined scheme still generally outperforms the original application in terms of performance.
