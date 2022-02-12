@@ -38,6 +38,7 @@ The following methods have been added or changed:
 cls.update_tree()
 ```
 Now you should call this function only when absolutely necessary. For example, if during a bulk update you affect the values of the `tn_parent` field. Otherwise, there is no need to use it.
+When updating an existing project, simply call this function once. It will automatically build a new and complete Closure Table for your tree.
 
 ### ancestors & descendants
 ```
