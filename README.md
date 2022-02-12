@@ -23,7 +23,7 @@ My idea was to solve these problems by combining the adjacency list with the Clo
 Of course, at large levels of nesting, the use of the Closure Table leads to an increase in resource costs. But at the same time, the combined scheme still generally outperforms the original application in terms of performance.
 
 ## Theory
-You can get a basic understanding of what a Closure Table is from 
+You can get a basic understanding of what is a Closure Table from:
 * [presentation](https://www.slideshare.net/billkarwin/models-for-hierarchical-data) by Bill Karwin;
 * [article](https://dirtsimple.org/2010/11/simplest-way-to-do-tree-based-queries.html) by blogger Dirt Simple;
 * [article](https://towardsdatascience.com/closure-table-pattern-to-model-hierarchies-in-nosql-c1be6a87e05b) by Andriy Zabavskyy.
