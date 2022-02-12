@@ -78,4 +78,4 @@ Future plans:
 * perform final code optimization;
 * live happily until death.
 
-Wishes are welcome.
+Your wishes, objections, comments are welcome.
