@@ -27,6 +27,7 @@ You can get a basic understanding of what a Closing Table is from
 * [presentation](https://www.slideshare.net/billkarwin/models-for-hierarchical-data) by Bill Karwin;
 * [article](https://dirtsimple.org/2010/11/simplest-way-to-do-tree-based-queries.html) by blogger Dirt Simple;
 * [article](https://towardsdatascience.com/closure-table-pattern-to-model-hierarchies-in-nosql-c1be6a87e05b) by Andriy Zabavskyy.
+
 You can easily find additional information on your own on the Internet.
 
 ## Interface changes
