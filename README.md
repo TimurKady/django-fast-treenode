@@ -74,7 +74,7 @@ Returns a queryset of nodes ordered by `tn_priority` each node. For example:
 - N.2.1
 - ...
 
-This method uses a lot of memory and may be changed in the future. Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table.
+This method uses a lot of memory and may be changed in the future. Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table. In most cases, the data in one Adjacency Table is sufficient for such an assembly. You can easily find the corresponding algorithms (two-pass and one-pass) on the Internet.
 
 ### get_path()
 ```
