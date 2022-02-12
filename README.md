@@ -50,6 +50,11 @@ self.get_descendants_tree_display(include_self=False, depth=None)
 These functions now take two extra arguments each insert include_self=False, depth=None. Default values allow these methods to be called in the old style.
 
 ```
+cls.get_tree(instance=None)
+```
+Returns an n-dimensional dictionary representing the model tree. Each node contains a `"children"=[]` key with a list of nested dictionaries of child nodes.
+
+```
 cls.get_ordered_queryset()
 ```
 Returns a queryset of nodes ordered by `tn_priority` each node. For example:
