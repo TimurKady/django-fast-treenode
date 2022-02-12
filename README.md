@@ -90,7 +90,7 @@ The code provided is not a reusable application. To use, run `pip install six`
 ## Plans for the future and prospects
 Future plans:
 * catch bugs and finish full testing;
-* to restore caching;
+* may be will restore caching;
 * may be will add the ability to determine the priority of the parent by any field, for example, by creation date or alphabetical order;
 * to perform final code optimization;
 * issue in the form of a reusable application;
