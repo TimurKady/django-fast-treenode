@@ -50,6 +50,17 @@ self.get_descendants_tree_display(include_self=False, depth=None)
 These functions now take two extra arguments each insert include_self=False, depth=None. Default values allow these methods to be called in the old style.
 
 ```
+cls.get_ordered_queryset()
+```
+Returns a queryset of nodes ordered by `tn_priority` each node. For example:
+- N.1
+- N.1.1
+- N.1.1.1
+- N.1.1.2
+- N.2
+etc.
+
+```
 self.get_path(prefix='', suffix='', delimiter='.', format_str='')
 ```
 Added the function of decorating a materialized path. The path is formed according to the value of the `tn_priority` field.
