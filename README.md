@@ -1,4 +1,5 @@
-# New Django-Treenode: combination of Adjacency List and Closure Table
+# New Django-Treenode 
+__Combination of Adjacency List and Closure Table__
 
 
 ## Debut idea
