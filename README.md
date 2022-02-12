@@ -74,7 +74,7 @@ Returns a queryset of nodes ordered by `tn_priority` each node. For example:
 - N.2.1
 - ...
 
-This method uses a lot of memory, `RawSQL()` and `.extra()` QuerySet method. It's possible that I'll change this method in the future due to fears of [exclusion of `.extra()`](https://docs.djangoproject.com/en/4.0/ref/models/querysets/#extra) from Django in the future. This and may be changed in the future. Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table. In most cases, the data in one Adjacency Table is sufficient for such an assembly. You can easily find the corresponding algorithms (two-pass and one-pass) on the Internet.
+This method uses a lot of memory, `RawSQL()` and `.extra()` QuerySet method. It's possible that I'll change this method in the future due to fears of [exclusion of `.extra()`](https://docs.djangoproject.com/en/4.0/ref/models/querysets/#extra) from Django in the future. Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table. In most cases, the data in one Adjacency Table is sufficient for such an assembly. You can easily find the corresponding algorithms (two-pass and one-pass) on the Internet.
 
 ### get_path()
 ```
