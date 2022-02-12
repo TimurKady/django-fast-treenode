@@ -1,4 +1,4 @@
-# New Treenode: combination of Adjacency List and Closure Table
+# New Django-Treenode: combination of Adjacency List and Closure Table
 ## Debut idea
 This is a modification of the reusable [django-treenode](https://github.com/fabiocaccamo/django-treenode) application developed by [Fabio Caccamo](https://github.com/fabiocaccamo).
 The original application has significant advantages over other analogues, and indeed, is one of the best implementations of support for hierarchical structures for Django. 
