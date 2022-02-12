@@ -57,6 +57,22 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
         return cls.objects.filter(tn_parent=None)
 
     @classmethod
+    def get_ordered_queryset(cls):
+        """Returns a set of nodes sorted by tn_priority"""
+
+        qs = cls.objects.all()
+        table = cls._meta.db_table
+        pk_list = sorted([node.pk for node in qs], key=lambda x: x.tn_order)
+        clauses = ' '.join(
+            ['WHEN %s.id=%s THEN %s' % (table, pk, i)
+             for i, pk in enumerate(pk_list)]
+        )
+        order = 'CASE %s END' % clauses
+        queryset = cls.objects.filter(pk__in=pk_list).extra(
+            select={'ordering': order}, order_by=('ordering',))
+        return queryset
+    
+    @classmethod
     def get_tree(cls, instance=None):
         """Get a n-dimensional dict representing the model tree"""
 
