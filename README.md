@@ -47,7 +47,7 @@ self.get_descendants_pks(include_self=False, depth=None)
 self.get_descendants_queryset(include_self=False, depth=None)
 self.get_descendants_tree_display(include_self=False, depth=None)
 ```
-These functions now take two extra arguments each insert include_self=False, depth=None. Default values allow these methods to be called in the old style.
+These functions now take two extra arguments each insert `include_self=False` and `depth=None`. Default values allow these methods to be called in the old style.
 
 ```
 cls.get_tree(instance=None)
