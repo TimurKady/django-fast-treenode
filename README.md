@@ -31,11 +31,13 @@ You can get a basic understanding of what is a Closure Table from:
 You can easily find additional information on your own on the Internet.
 
 ## Interface changes
+### update_tree
 ```
 cls.update_tree()
 ```
 Now you should call this function only when absolutely necessary. For example, if during a bulk update you affect the values of the `tn_parent` field. Otherwise, there is no need to use it.
 
+### ancestors & descendants
 ```
 self.get_ancestors(include_self=True, depth=None)
 self.get_ancestors_count(include_self=True, depth=None)
@@ -49,11 +51,13 @@ self.get_descendants_tree_display(include_self=False, depth=None)
 ```
 These functions now take two extra arguments each insert `include_self=False` and `depth=None`. Default values allow these methods to be called in the old style.
 
+### get_tree
 ```
 cls.get_tree(instance=None)
 ```
 Returns an n-dimensional dictionary representing the model tree. Each node contains a `"children"=[]` key with a list of nested dictionaries of child nodes.
 
+### get_ordered_queryset
 ```
 cls.get_ordered_queryset()
 ```
@@ -68,11 +72,13 @@ Returns a queryset of nodes ordered by `tn_priority` each node. For example:
 
 This method uses a lot of memory and may be changed in the future. Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table.
 
+### get_path
 ```
 self.get_path(prefix='', suffix='', delimiter='.', format_str='')
 ```
 Added the function of decorating a materialized path. The path is formed according to the value of the `tn_priority` field.
 
+### Access to Closure Table
 ```
 cls.closure_model
 self._closure_model
