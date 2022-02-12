@@ -22,6 +22,39 @@ My idea was to solve these problems by combining the adjacency list with the Clo
 
 Of course, at large levels of nesting, the use of the Closure Table leads to an increase in resource costs. But at the same time, the combined scheme still generally outperforms the original application in terms of performance.
 
+## Theory
+You can get a basic understanding of what a Closing Table is from [article](https://towardsdatascience.com/closure-table-pattern-to-model-hierarchies-in-nosql-c1be6a87e05b) by Andriy Zabavskyy or [article](https://dirtsimple.org/2010/11/simplest-way-to-do-tree-based-queries.html) by blogger Dirt Simple. 
+
+## Interface changes
+```
+cls.update_tree()
+```
+Now you should call this function only when absolutely necessary. For example, if during a bulk update you affect the values of the `tn_parent` field. Otherwise, there is no need to use it.
+
+```
+self.get_ancestors(include_self=True, depth=None)
+self.get_ancestors_count(include_self=True, depth=None)
+self.get_ancestors_pks(include_self=True, depth=None)
+self.get_ancestors_queryset(include_self=True, depth=None)
+self.get_descendants(include_self=False, depth=None)
+self.get_descendants_count(include_self=False, depth=None)
+self.get_descendants_pks(include_self=False, depth=None)
+self.get_descendants_queryset(include_self=False, depth=None)
+self.get_descendants_tree_display(include_self=False, depth=None)
+```
+These functions now take two extra arguments each insert include_self=False, depth=None. Default values allow these methods to be called in the old style.
+
+```
+self.get_path(prefix='', suffix='', delimiter='.', format_str='')
+```
+Added the function of decorating a materialized path. The path is formed according to the value of the `tn_priority` field.
+
+```
+cls.closure_model
+self._closure_model
+```
+These two attributes give you access to your model's Closure Table
+
 ## Cautions
 The code provided is intended for testing by developers and is not recommended for use in production projects. Only general tests were carried out. The risk of using the code lies entirely with you.
 
