@@ -95,6 +95,6 @@ Future plans:
 * issue in the form of a reusable application;
 * add search functionality;
 * perform final code optimization;
-* live happily until death.
+* be happy, don't worry, until die.
 
 Your wishes, objections, comments are welcome.
