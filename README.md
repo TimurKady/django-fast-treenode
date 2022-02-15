@@ -107,7 +107,7 @@ This software contains, uses, including in a modified form:
 
 Special thanks to [Mathieu Leplatre](https://blog.mathieu-leplatre.info/pages/about.html) for the advice used in writing this application
 
-## Plans for the future and prospects
+## To do
 Future plans:
 * catch bugs and finish full testing;
 * may be will restore caching;
