@@ -295,7 +295,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     def get_root(self):
         """Get the root node for the current node"""
         qs = self._closure_model.objects.filter(child=self).order_by('depth')
-        return qs.last().parent
+        return qs.last().parent if qs.count() > 0 else None
 
     def get_root_pk(self):
         """Get the root node pk for the current node"""
