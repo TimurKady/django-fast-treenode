@@ -1,4 +1,4 @@
-# New Django-Treenode 
+# Django Fast Treenode 
 __Combination of Adjacency List and Closure Table__
 
 
@@ -113,7 +113,6 @@ Future plans:
 * may be will restore caching;
 * may be will add the ability to determine the priority of the parent by any field, for example, by creation date or alphabetical order;
 * to perform final code optimization;
-* issue in the form of a reusable application;
 * to be happy, to don't worry, until die.
 
 Your wishes, objections, comments are welcome.
