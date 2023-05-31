@@ -17,7 +17,7 @@ My idea was to solve these problems by combining the adjacency list with the Clo
 * the Closure Model is generated automatically;
 * maintained compatibility with the original package at the level of documented functions;
 * most requests are satisfied in one call to the database;
-* inserting a new element takes two calls to the database without sinals usage;
+* inserting a new element takes two calls to the database without signals usage;
 * bulk-operations are supported;
 * the cost of creating a new dependency is reduced many times;
 * useful functionality added for some methods (e.g.  the `include_self=False` and `depth` parameters has been added to functions that return lists/querysets);
