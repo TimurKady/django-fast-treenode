@@ -97,9 +97,6 @@ The code provided is intended for testing by developers and is not recommended f
 
 Don't access treenode fields directly! Most of them have been removed as unnecessary. Use functions documented in the [source application](https://github.com/fabiocaccamo/django-treenode).
 
-## Dependencies
-The code provided is not a reusable application. To use, run `pip install six`
-
 ## Credits
 This software contains, uses, including in a modified form:
 *  [django-treenode](https://github.com/fabiocaccamo/django-treenode) by [Fabio Caccamo](https://github.com/fabiocaccamo);
