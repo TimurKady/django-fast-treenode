@@ -566,7 +566,7 @@ cls.get_path(prefix='', suffix='', delimiter='.', format_str='')
 ```
 
 ## License
-Released under MIT License.
+Released under [MIT License](https://github.com/TimurKady/django-fast-treenode/blob/main/LICENSE).
 
 ## Cautions
 The code provided is intended for testing by developers and is not recommended for use in production projects. Only general tests were carried out. The risk of using the code lies entirely with you.
