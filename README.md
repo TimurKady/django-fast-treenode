@@ -548,15 +548,15 @@ Returns a queryset of nodes ordered by tn_priority each node.
 cls.get_ordered_queryset()
 ```
 For example:
-- N.1
-- N.1.1
-- N.1.1.1
-- N.1.1.2
-- N.2
-- N.2.1
+- A.1
+- A.1.1
+- A.1.1.1
+- A.1.1.2
+- A.2
+- A.2.1
 - ...
 
-This method uses a lot of memory, ```RawSQL()``` and ```.extra()``` QuerySet method. Use of this method is deprecated due to concerns that Django's ```.extra()`` method **will be deprecated in the future**. 
+This method uses a lot of memory, ```RawSQL()``` and ```.extra()``` QuerySet method. Use of this method is deprecated due to concerns that Django's ```.extra()``` method **will be deprecated in the future**. 
 Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table. In most cases, the data in one Adjacency Table is sufficient for such an assembly. You can easily find the corresponding algorithms (two-pass and one-pass) on the Internet.
 
 ### get_path
