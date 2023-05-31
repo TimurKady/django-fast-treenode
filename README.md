@@ -1,4 +1,4 @@
-# Django Fast Treenode 
+# Django-fast-treenode 
 __Combination of Adjacency List and Closure Table__
 
 ## Features
