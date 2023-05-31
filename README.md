@@ -2,6 +2,7 @@
 __Combination of Adjacency List and Closure Table__
 
 ## Features
+Application for supporting tree (hierarchical) data structure in Django projects
 * faster,
 * synced: in-memory model instances are automatically updated,
 * compatibility: you can easily add treenode to existing projects,
