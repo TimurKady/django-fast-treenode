@@ -43,11 +43,11 @@ You can get a basic understanding of what is a Closure Table from:
 You can easily find additional information on your own on the Internet.
 
 ## Quick start
-1. Run pip install django-treenode
-2. Add fast-treenode to settings.INSTALLED_APPS
-3. Make your model inherit from treenode.models.TreeNodeModel (described below)
-4. Make your model-admin inherit from treenode.admin.TreeNodeModelAdmin (described below)
-5. Run python manage.py makemigrations and python manage.py migrate
+1. Run ```pip install django-fast-treenode```
+2. Add ```django-fast-treenode``` to ```settings.INSTALLED_APPS```
+3. Make your model inherit from ```treenode.models.TreeNodeModel``` (described below)
+4. Make your model-admin inherit from ```treenode.admin.TreeNodeModelAdmin``` (described below)
+5. Run python manage.py makemigrations and ```python manage.py migrate```
 
 When updating an existing project, simply call ```cls.update_tree()``` function once. 
 It will automatically build a new and complete Closure Table for your tree.
