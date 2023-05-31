@@ -1,7 +1,8 @@
-# Django Fast Treenode 
+# Django-fast-treenode 
 __Combination of Adjacency List and Closure Table__
 
 ## Features
+Application for supporting tree (hierarchical) data structure in Django projects
 * faster,
 * synced: in-memory model instances are automatically updated,
 * compatibility: you can easily add treenode to existing projects,
@@ -46,7 +47,7 @@ You can easily find additional information on your own on the Internet.
 2. Add ```django-fast-treenode``` to ```settings.INSTALLED_APPS```
 3. Make your model inherit from ```treenode.models.TreeNodeModel``` (described below)
 4. Make your model-admin inherit from ```treenode.admin.TreeNodeModelAdmin``` (described below)
-5. Run ```python manage.py``` makemigrations and ```python manage.py migrate```
+5. Run python manage.py makemigrations and ```python manage.py migrate```
 
 When updating an existing project, simply call ```cls.update_tree()``` function once. 
 It will automatically build a new and complete Closure Table for your tree.
@@ -75,10 +76,6 @@ class Category(TreeNodeModel):
 ```
 
 The `TreeNodeModel` abstract class adds many fields (prefixed with `tn_` to prevent direct access) and public methods to your models.
-
-:warning: **If you are extending a model that already has some fields, please ensure that your model existing fields names don't clash with `TreeNodeModel` public [methods/properties](#methodsproperties) names.**
-
----
 
 ### `admin.py`
 Make your model-admin class inherit from `treenode.admin.TreeNodeModelAdmin`.
@@ -122,6 +119,16 @@ CACHES = {
         "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     },
 }
+```
+### `forms.py`
+
+```
+class YoursForm(TreeNodeForm):
+
+    class Meta:
+        widgets = {
+            'tn_parent': TreeWidget(attrs={'style': 'min-width:400px'}),
+        }
 ```
 
 ## Usage
@@ -535,30 +542,31 @@ obj.is_sibling_of(target_obj)
 cls.update_tree()
 ```
 
-### `get_ordered_queryset`
+#### `get_ordered_queryset`
 Returns a queryset of nodes ordered by tn_priority each node. 
 ```python
 cls.get_ordered_queryset()
 ```
 For example:
-- N.1
-- N.1.1
-- N.1.1.1
-- N.1.1.2
-- N.2
-- N.2.1
+- A.1
+- A.1.1
+- A.1.1.1
+- A.1.1.2
+- A.2
+- A.2.1
 - ...
 
-This method uses a lot of memory, RawSQL() and .extra() QuerySet method. It's possible I'll change this method due to concerns about aiming to deprecate .extra() method from Django in the future. Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table. In most cases, the data in one Adjacency Table is sufficient for such an assembly. You can easily find the corresponding algorithms (two-pass and one-pass) on the Internet.
+This method uses a lot of memory, ```RawSQL()``` and ```.extra()``` QuerySet method. Use of this method is deprecated due to concerns that Django's ```.extra()``` method **will be deprecated in the future**. 
+Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table. In most cases, the data in one Adjacency Table is sufficient for such an assembly. You can easily find the corresponding algorithms (two-pass and one-pass) on the Internet.
 
-### get_path
+#### `get_path`
 Added the function of decorating a **materialized path**. The path is formed according to the value of the `tn_priority` field.
 ```python
 cls.get_path(prefix='', suffix='', delimiter='.', format_str='')
 ```
 
 ## License
-Released under MIT License.
+Released under [MIT License](https://github.com/TimurKady/django-fast-treenode/blob/main/LICENSE).
 
 ## Cautions
 The code provided is intended for testing by developers and is not recommended for use in production projects. Only general tests were carried out. The risk of using the code lies entirely with you.
@@ -574,11 +582,10 @@ Special thanks to [Mathieu Leplatre](https://blog.mathieu-leplatre.info/pages/ab
 
 ## To do
 Future plans:
-* catch bugs and finish full testing;
+* drug-and-drop support;
 * may be will restore caching;
 * may be will add the ability to determine the priority of the parent by any field, for example, by creation date or alphabetical order;
-* to perform final code optimization;
-* to be happy, to don't worry, until die;
-* drug-and-drop support.
+* to be happy, to don't worry, until die.
+
 
 Your wishes, objections, comments are welcome.
