@@ -120,6 +120,16 @@ CACHES = {
     },
 }
 ```
+### forms.py
+
+```
+class YoursForm(TreeNodeForm):
+
+    class Meta:
+        widgets = {
+            'tn_parent': TreeWidget(attrs={'style': 'min-width:400px'}),
+        }
+```
 
 ## Usage
 
