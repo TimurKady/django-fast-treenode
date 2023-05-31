@@ -582,11 +582,10 @@ Special thanks to [Mathieu Leplatre](https://blog.mathieu-leplatre.info/pages/ab
 
 ## To do
 Future plans:
-* catch bugs and finish full testing;
+* drug-and-drop support;
 * may be will restore caching;
 * may be will add the ability to determine the priority of the parent by any field, for example, by creation date or alphabetical order;
-* to perform final code optimization;
-* to be happy, to don't worry, until die;
-* drug-and-drop support.
+* to be happy, to don't worry, until die.
+
 
 Your wishes, objections, comments are welcome.
