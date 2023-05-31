@@ -559,7 +559,7 @@ For example:
 This method uses a lot of memory, ```RawSQL()``` and ```.extra()``` QuerySet method. Use of this method is deprecated due to concerns that Django's ```.extra()``` method **will be deprecated in the future**. 
 Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table. In most cases, the data in one Adjacency Table is sufficient for such an assembly. You can easily find the corresponding algorithms (two-pass and one-pass) on the Internet.
 
-#### get_path
+#### `get_path`
 Added the function of decorating a **materialized path**. The path is formed according to the value of the `tn_priority` field.
 ```python
 cls.get_path(prefix='', suffix='', delimiter='.', format_str='')
