@@ -158,9 +158,11 @@ class YoursForm(TreeNodeForm):
 -   [`get_last_child`](#get_last_child)
 -   [`get_level`](#get_level)
 -   [`get_order`](#get_order)
+-   [`get_ordered_queryset`](#get_ordered_queryset)
 -   [`get_parent`](#get_parent)
 -   [`get_parent_pk`](#get_parent_pk)
 -   [`set_parent`](#set_parent)
+-   [`get_path`](#get_path)
 -   [`get_priority`](#get_priority)
 -   [`set_priority`](#set_priority)
 -   [`get_root`](#get_root)
@@ -184,9 +186,6 @@ class YoursForm(TreeNodeForm):
 -   [`is_root_of`](#is_root_of)
 -   [`is_sibling_of`](#is_sibling_of)
 -   [`update_tree`](#update_tree)
--   [`get_ordered_queryset`](#get_ordered_queryset)
--   [`get_path`](#get_path)
-
 
 #### `delete`
 **Delete a node** if `cascade=True` (default behaviour), children and descendants will be deleted too,
@@ -363,6 +362,23 @@ obj.get_order()
 obj.order
 ```
 
+#### `get_ordered_queryset`
+Returns a queryset of nodes ordered by tn_priority each node. 
+```python
+cls.get_ordered_queryset()
+```
+For example:
+- A.1
+- A.1.1
+- A.1.1.1
+- A.1.1.2
+- A.2
+- A.2.1
+- ...
+
+This method uses a lot of memory, ```RawSQL()``` and ```.extra()``` QuerySet method. Use of this method is deprecated due to concerns that Django's ```.extra()``` method **will be deprecated in the future**. 
+Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table. In most cases, the data in one Adjacency Table is sufficient for such an assembly. You can easily find the corresponding algorithms (two-pass and one-pass) on the Internet.
+
 #### `get_parent`
 Get the **parent node**:
 ```python
@@ -391,6 +407,11 @@ Get the **node priority**:
 obj.get_priority()
 # or
 obj.priority
+```
+#### `get_path`
+Added the function of decorating a **materialized path**. The path is formed according to the value of the `tn_priority` field.
+```python
+cls.get_path(prefix='', suffix='', delimiter='.', format_str='')
 ```
 
 #### `set_priority`
@@ -540,29 +561,6 @@ obj.is_sibling_of(target_obj)
 **Update tree** manually, useful after **bulk updates**:
 ```python
 cls.update_tree()
-```
-
-#### `get_ordered_queryset`
-Returns a queryset of nodes ordered by tn_priority each node. 
-```python
-cls.get_ordered_queryset()
-```
-For example:
-- A.1
-- A.1.1
-- A.1.1.1
-- A.1.1.2
-- A.2
-- A.2.1
-- ...
-
-This method uses a lot of memory, ```RawSQL()``` and ```.extra()``` QuerySet method. Use of this method is deprecated due to concerns that Django's ```.extra()``` method **will be deprecated in the future**. 
-Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table. In most cases, the data in one Adjacency Table is sufficient for such an assembly. You can easily find the corresponding algorithms (two-pass and one-pass) on the Internet.
-
-#### `get_path`
-Added the function of decorating a **materialized path**. The path is formed according to the value of the `tn_priority` field.
-```python
-cls.get_path(prefix='', suffix='', delimiter='.', format_str='')
 ```
 
 ## License
