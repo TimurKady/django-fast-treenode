@@ -44,7 +44,7 @@ You can easily find additional information on your own on the Internet.
 
 ## Quick start
 1. Run ```pip install django-fast-treenode```
-2. Add ```django-fast-treenode``` to ```settings.INSTALLED_APPS```
+2. Add ```treenode``` to ```settings.INSTALLED_APPS```
 3. Make your model inherit from ```treenode.models.TreeNodeModel``` (described below)
 4. Make your model-admin inherit from ```treenode.admin.TreeNodeModelAdmin``` (described below)
 5. Run python manage.py makemigrations and ```python manage.py migrate```
