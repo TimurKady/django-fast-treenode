@@ -58,8 +58,7 @@ Make your model class inherit from `treenode.models.TreeNodeModel`:
 
 ```python
 from django.db import models
-
-from treenode.models import TreeNodeModel
+from django-fast-treenode.models import TreeNodeModel
 
 
 class Category(TreeNodeModel):
@@ -83,8 +82,8 @@ Make your model-admin class inherit from `treenode.admin.TreeNodeModelAdmin`.
 ```python
 from django.contrib import admin
 
-from treenode.admin import TreeNodeModelAdmin
-from treenode.forms import TreeNodeForm
+from django-fast-treenode.admin import TreeNodeModelAdmin
+from django-fast-treenode.forms import TreeNodeForm
 
 from .models import Category
 
