@@ -115,12 +115,7 @@ CACHES = {
         "LOCATION": "...",
     },
     "treenode": {
-        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
-        'LOCATION': '127.0.0.1:11211',
-        'TIMEOUT': 3600,  # Cache entries expire after 1 hour (adjust as needed)
-        'OPTIONS': {
-            'MAX_ENTRIES': 1000,  # Limit the maximum number of cache entries (adjust as needed)
-        }
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
     },
 }
 ```
