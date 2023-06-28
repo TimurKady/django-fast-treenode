@@ -184,7 +184,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     def get_children(self):
         """Get a list containing all children"""
 
-        return list(self.tn_children.all())
+        return list(self.self.get_children_queryset())
 
     def get_children_count(self):
         """Get the children count"""
@@ -194,11 +194,11 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     def get_children_pks(self):
         """Get the children pks list"""
 
-        return [ch.pk for ch in self.tn_children.all()]
+        return [ch.pk for ch in self.get_children_queryset()]
 
     def get_children_queryset(self):
         """Get the children queryset"""
-        return self.tn_children.all()
+        return self._meta.model.objects.filter(tn_paren=self.id)
 
     def get_depth(self):
         """Get the node depth (self, how many levels of descendants)"""
