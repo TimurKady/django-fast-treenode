@@ -42,7 +42,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
         if self.treenode_display_field:
             return str(getattr(self, self.treenode_display_field))
         else:
-            return 'Node %d' % str(self.pk)
+            return 'Node %d' % self.pk
 
     # Public methods
 
