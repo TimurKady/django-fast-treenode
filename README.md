@@ -120,7 +120,7 @@ CACHES = {
 ### `forms.py`
 
 ```
-from datacore.widgets import TreeWidget
+from treenode.widgets import TreeWidget
 
 class YoursForm(TreeNodeForm):
 
