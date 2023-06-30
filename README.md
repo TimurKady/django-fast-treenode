@@ -81,12 +81,10 @@ Make your model-admin class inherit from `treenode.admin.TreeNodeModelAdmin`.
 
 ```python
 from django.contrib import admin
-
 from treenode.admin import TreeNodeModelAdmin
 from treenode.forms import TreeNodeForm
 
 from .models import Category
-
 
 class CategoryAdmin(TreeNodeModelAdmin):
 
@@ -122,6 +120,8 @@ CACHES = {
 ### `forms.py`
 
 ```
+from datacore.widgets import TreeWidget
+
 class YoursForm(TreeNodeForm):
 
     class Meta:
