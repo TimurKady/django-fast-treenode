@@ -126,7 +126,7 @@ class YoursForm(TreeNodeForm):
 
     class Meta:
         widgets = {
-            'tn_parent': TreeWidget(attrs={'style': 'min-width:400px'}),
+            'yours_tree_field': TreeWidget(attrs={'style': 'min-width:400px'}),
         }
 ```
 
