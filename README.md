@@ -410,7 +410,7 @@ obj.priority
 #### `get_path`
 Added the function of decorating a **materialized path**. The path is formed according to the value of the `tn_priority` field.
 ```python
-cls.get_path(prefix='', suffix='', delimiter='.', format_str='')
+obj.get_path(prefix='', suffix='', delimiter='.', format_str='')
 ```
 
 #### `set_priority`
