@@ -7,6 +7,7 @@ TreeNode Models Module
 
 from django.db import models
 from django.db import transaction
+from django.core.cache import caches
 from django.utils.translation import gettext_lazy as _
 from six import with_metaclass
 from . import classproperty
@@ -14,8 +15,8 @@ from .compat import force_str
 from .factory import TreeFactory
 from .managers import TreeNodeManager
 
-from django.core.cache import cache
 
+treenode_cache = caches['treenode']
 
 def cached_tree_method(func):
     """
@@ -33,11 +34,11 @@ def cached_tree_method(func):
 
     def wrapper(self, *args, **kwargs):
         cache_key = f"{self.__class__.__name__}_{self.pk}_tree_{func.__name__}"
-        result = cache.get(cache_key)
+        result = treenode_cache.get(cache_key)
 
         if result is None:
             result = func(self, *args, **kwargs)
-            cache.set(cache_key, result)
+            treenode_cache.set(cache_key, result)
 
         return result
 
@@ -109,7 +110,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     def update_tree(cls):
         """Update tree manually, useful after bulk updates"""
 
-        cache.clear()
+        treenode_cache.clear()
 
         cls.closure_model.objects.all().delete()
 
@@ -147,7 +148,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     @classmethod
     def delete_tree(cls):
         """Delete the whole tree for the current node class"""
-        cache.clear()
+        treenode_cache.clear()
         cls.closure_model.objects.all().delete()
         cls.objects.all().delete()
 
@@ -580,7 +581,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     def _insert(self):
         """Adds a new entry to the Adjacency Table and the Closure Table"""
 
-        cache.clear()
+        treenode_cache.clear()
 
         instance = self._closure_model.objects.create(
             parent=self,
@@ -605,7 +606,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
 
     @transaction.atomic
     def _move_to(self, old_parent):
-        cache.clear()
+        treenode_cache.clear()
 
         target = self.tn_parent
         qs = self._closure_model.objects.all()
@@ -631,7 +632,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
 
     def _order(self):
 
-        cache.clear()
+        treenode_cache.clear()
 
         queryset = self.get_siblings_queryset()
 
@@ -649,7 +650,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
             sorted_siblings, ('tn_priority', ))
 
     def save(self, force_insert=False, *args, **kwargs):
-        cache.clear()
+        treenode_cache.clear()
 
         try:
             old = self._meta.model.objects.get(pk=self.pk)
