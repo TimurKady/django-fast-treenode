@@ -3,7 +3,8 @@ __Combination of Adjacency List and Closure Table__
 
 ## Functions
 Application for supporting tree (hierarchical) data structure in Django projects
-* Faster: resource-intensive operations are cached; bulk operations are used for inserts and changes,
+* fast: the fastest of the two methods is used to process requests, combining the advantages of an **Adjacency Table** and a **Closure Table**,
+* even faster: the main resource-intensive operations are **cached**; **bulk operations** are used for inserts and changes,
 * synchronized: model instances in memory are automatically updated,
 * compatibility: you can easily add a tree node to existing projects using TreeNode without changing the code,
 * no dependencies,
