@@ -549,9 +549,9 @@ cls.update_tree()
 Released under [MIT License](https://github.com/TimurKady/django-fast-treenode/blob/main/LICENSE).
 
 ## Cautions
-The code provided is intended for testing by developers and is not recommended for use in production projects. Only general tests were carried out. The risk of using the code lies entirely with you.
+The provided code is already being used in production projects, even though I have only done general testing. That is why the risk of using the code lies entirely with you.
 
-Don't access treenode fields directly! Most of them have been removed as unnecessary. Use functions documented in the [source application](https://github.com/fabiocaccamo/django-treenode).
+**Warning**: don't access the tree node fields directly! Most of them have been removed as unnecessary. In the future, only `tn_parent` and `tn_priority` will be kept. Use the functions described in the documentation above or the documentation for the [original application](https://github.com/fabiocaccamo/django-treenode). 
 
 ## Credits
 This software contains, uses, including in a modified form:
