@@ -18,20 +18,8 @@ class NoPkDescOrderedChangeList(ChangeList):
         return tuple()
 
     def get_queryset(self, request):
-        qs = super().get_queryset(request)
-        order = sorted([node for node in qs], key=lambda x: x.tn_order)
-        pk_list = [node.pk for node in order]
-
-        table = self.model._meta.db_table
-        clauses = ' '.join(
-            ['WHEN %s.id=%s THEN %s' % (table, pk, i)
-             for i, pk in enumerate(pk_list)]
-        )
-        order = 'CASE %s END' % clauses
-        queryset = self.model.objects.filter(pk__in=pk_list).extra(
-            select={'ordering': order}, order_by=('ordering',))
-
-        return queryset.select_related('tn_parent')
+        qs = self.model.objects.all()
+        return qs.select_related('tn_parent')
 
 
 class TreeNodeModelAdmin(admin.ModelAdmin):
