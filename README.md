@@ -1,15 +1,15 @@
 # Django-fast-treenode 
 __Combination of Adjacency List and Closure Table__
 
-## Features
+## Functions
 Application for supporting tree (hierarchical) data structure in Django projects
-* faster,
-* synced: in-memory model instances are automatically updated,
-* compatibility: you can easily add treenode to existing projects,
+* Faster: resource-intensive operations are cached; bulk operations are used for inserts and changes,
+* synchronized: model instances in memory are automatically updated,
+* compatibility: you can easily add a tree node to existing projects using TreeNode without changing the code,
 * no dependencies,
-* easy configuration: just extend the abstract model / model-admin,
-* admin integration: visualization options (accordion, breadcrumbs or indentation),
-* widget: build-in Select2-to-Tree extends Select2 to support arbitrary level of nesting.
+* easy setup: just extend the abstract model/model-admin,
+* admin integration: visualization options (accordion, breadcrumbs or padding),
+* widget: Built-in Select2-to-Tree extends Select2 to support arbitrary nesting levels.
 
 ## Debut idea
 This is a modification of the reusable [django-treenode](https://github.com/fabiocaccamo/django-treenode) application developed by [Fabio Caccamo](https://github.com/fabiocaccamo).
@@ -81,10 +81,12 @@ Make your model-admin class inherit from `treenode.admin.TreeNodeModelAdmin`.
 
 ```python
 from django.contrib import admin
+
 from treenode.admin import TreeNodeModelAdmin
 from treenode.forms import TreeNodeForm
 
 from .models import Category
+
 
 class CategoryAdmin(TreeNodeModelAdmin):
 
@@ -120,13 +122,11 @@ CACHES = {
 ### `forms.py`
 
 ```
-from treenode.widgets import TreeWidget
-
 class YoursForm(TreeNodeForm):
 
     class Meta:
         widgets = {
-            'yours_tree_field': TreeWidget(attrs={'style': 'min-width:400px'}),
+            'tn_parent': TreeWidget(attrs={'style': 'min-width:400px'}),
         }
 ```
 
@@ -157,7 +157,6 @@ class YoursForm(TreeNodeForm):
 -   [`get_last_child`](#get_last_child)
 -   [`get_level`](#get_level)
 -   [`get_order`](#get_order)
--   [`get_ordered_queryset`](#get_ordered_queryset)
 -   [`get_parent`](#get_parent)
 -   [`get_parent_pk`](#get_parent_pk)
 -   [`set_parent`](#set_parent)
@@ -361,23 +360,6 @@ obj.get_order()
 obj.order
 ```
 
-#### `get_ordered_queryset`
-Returns a queryset of nodes ordered by tn_priority each node. 
-```python
-cls.get_ordered_queryset()
-```
-For example:
-- A.1
-- A.1.1
-- A.1.1.1
-- A.1.1.2
-- A.2
-- A.2.1
-- ...
-
-This method uses a lot of memory, ```RawSQL()``` and ```.extra()``` QuerySet method. Use of this method is deprecated due to concerns that Django's ```.extra()``` method **will be deprecated in the future**. 
-Use it only if you cannot otherwise assemble an ordered tree from an Adjacency Table and a Closure Table. In most cases, the data in one Adjacency Table is sufficient for such an assembly. You can easily find the corresponding algorithms (two-pass and one-pass) on the Internet.
-
 #### `get_parent`
 Get the **parent node**:
 ```python
@@ -410,7 +392,7 @@ obj.priority
 #### `get_path`
 Added the function of decorating a **materialized path**. The path is formed according to the value of the `tn_priority` field.
 ```python
-obj.get_path(prefix='', suffix='', delimiter='.', format_str='')
+cls.get_path(prefix='', suffix='', delimiter='.', format_str='')
 ```
 
 #### `set_priority`
@@ -579,9 +561,8 @@ Special thanks to [Mathieu Leplatre](https://blog.mathieu-leplatre.info/pages/ab
 
 ## To do
 Future plans:
-* drug-and-drop support;
-* may be will restore caching;
 * may be will add the ability to determine the priority of the parent by any field, for example, by creation date or alphabetical order;
+* drug-and-drop support;
 * to be happy, to don't worry, until die.
 
 
