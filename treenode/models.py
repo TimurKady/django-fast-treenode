@@ -220,7 +220,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     @cached_tree_method
     def get_children_queryset(self):
         """Get the children queryset"""
-        return self._meta.model.objects.filter(tn_paren=self.id)
+        return self._meta.model.objects.filter(tn_parent=self.id)
 
     def get_depth(self):
         """Get the node depth (self, how many levels of descendants)"""
