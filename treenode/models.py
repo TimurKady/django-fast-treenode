@@ -253,7 +253,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
         """Get the descendants queryset"""
 
         pks = self.get_descendants_pks(include_self, depth)
-        return self._meta.model.objects.filter(**pks)
+        return self._meta.model.objects.filter(pk__in=pks)
 
     def get_descendants_tree(self):
         """Get a n-dimensional dict representing the model tree"""
