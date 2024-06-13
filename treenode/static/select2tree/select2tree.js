@@ -141,31 +141,37 @@ window.addEventListener("load", function() {
     		showHideSub(target.parentNode);
     	}
 
-    	function showHideSub(ele) {
-    		var curEle = ele;
-    		var $options = $(ele).parent(".select2-results__options");
-    		var shouldShow = true;
-    		do {
-    			var pup = ($(curEle).attr("data-pup") || "").replace(/'/g, "\\'");
-    			curEle = null;
-    			if (pup) {
-    				var pupEle = $options.find(".select2-results__option[data-val='" + pup + "']");
-    				if (pupEle.length > 0) {
-    					if (!pupEle.eq(0).hasClass("opened")) { // hide current node if any parent node is collapsed
-    						$(ele).removeClass("showme");
-    						shouldShow = false;
-    						break;
-    					}
-    					curEle = pupEle[0];
-    				}
-    			}
-    		} while (curEle);
-    		if (shouldShow) $(ele).addClass("showme");
-
-    		var val = ($(ele).attr("data-val") || "").replace(/'/g, "\\'");
-    		$options.find(".select2-results__option[data-pup='" + val + "']").each(function () {
-    			showHideSub(this);
-    		});
+    	function escapeAttributeValue(value) {
+    	    return value.replace(/'/g, "\\'").replace(/\\/g, '\\\\');
     	}
+
+
+    	function showHideSub(ele) {
+    	    var curEle = ele;
+    	    var $options = $(ele).parent(".select2-results__options");
+    	    var shouldShow = true;
+    	    do {
+            	var pup = escapeAttributeValue($(curEle).attr("data-pup") || "");
+    	        curEle = null;
+            	if (pup) {
+    	            var pupEle = $options.find(".select2-results__option[data-val='" + pup + "']");
+            	    if (pupEle.length > 0) {
+    	                if (!pupEle.eq(0).hasClass("opened")) {
+    	                    $(ele).removeClass("showme");
+    	                    shouldShow = false;
+    	                    break;
+    	                }
+    	                curEle = pupEle[0];
+    	            }
+    	        }
+    	    } while (curEle);
+    	    if (shouldShow) $(ele).addClass("showme");
+
+    	    var val = escapeAttributeValue($(ele).attr("data-val") || "");
+    	    $options.find(".select2-results__option[data-pup='" + val + "']").each(function () {
+    	        showHideSub(this);
+    	    });
+    	}
+
     })(django.jQuery);
 });

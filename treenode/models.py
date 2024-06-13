@@ -143,7 +143,6 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
                 for c in children
             ]
             cls.closure_model.objects.bulk_create(objects)
-        cls._update_orders()
 
     @classmethod
     def delete_tree(cls):
