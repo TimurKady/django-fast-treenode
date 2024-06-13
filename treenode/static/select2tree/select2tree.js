@@ -142,8 +142,12 @@ window.addEventListener("load", function() {
     	}
 
     	function escapeAttributeValue(value) {
-    	    return value.replace(/'/g, "\\'").replace(/\\/g, '\\\\');
+        	if (!value.includes("\\'") && !value.includes('\\\\')) {
+          	  value = value.replace(/'/g, "\\'").replace(/\\/g, '\\\\');
+        	}
+        	return value;
     	}
+
 
 
     	function showHideSub(ele) {
