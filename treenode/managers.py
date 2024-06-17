@@ -5,7 +5,7 @@ TreeNode Managers Module
 """
 
 from django.db import models
-from django.db.models import Case, When, Value
+from django.db.models import Case, Value, When
 
 
 class TreeNodeQuerySet(models.QuerySet):
@@ -18,23 +18,20 @@ class TreeNodeQuerySet(models.QuerySet):
     def bulk_create(self, objs, batch_size=None, ignore_conflicts=False):
         objs = super().bulk_create(objs, batch_size, ignore_conflicts)
 
-        objs = self.model.closure_model.bulk_create([
-            self.model.closure_model(
-                parent=item,
-                child=item,
-                depth=0
-            )
-        ] for item in objs)
+        objs = self.model.closure_model.bulk_create(
+            [self.model.closure_model(parent=item, child=item, depth=0)]
+            for item in objs
+        )
 
         for node in objs:
             qs = self.model.closure_model.objects.all()
-            parents = qs.filter(child=node.tn_parent).values('parent', 'depth')
-            children = qs.filter(parent=node).values('child', 'depth')
+            parents = qs.filter(child=node.tn_parent).values("parent", "depth")
+            children = qs.filter(parent=node).values("child", "depth")
             objects = [
                 self.model.closure_model(
-                    parent_id=p['parent'],
-                    child_id=c['child'],
-                    depth=p['depth'] + c['depth'] + 1
+                    parent_id=p["parent"],
+                    child_id=c["child"],
+                    depth=p["depth"] + c["depth"] + 1,
                 )
                 for p in parents
                 for c in children
@@ -59,11 +56,15 @@ class TreeNodeManager(models.Manager):
 
         # Retrieve the queryset with the desired ordering
         return qs.filter(pk__in=pk_list).order_by(
-            Case(*[When(pk=pk, then=Value(ordering))
-                   for ordering, pk in enumerate(pk_list)],
-                 default=Value(len(pk_list)),
-                 output_field=models.IntegerField(),
-                 )
+            Case(
+                *[
+                    When(pk=pk, then=Value(ordering))
+                    for ordering, pk in enumerate(pk_list)
+                ],
+                default=Value(len(pk_list)),
+                output_field=models.IntegerField(),
+            )
         )
+
 
 # End

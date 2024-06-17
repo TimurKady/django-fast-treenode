@@ -5,6 +5,7 @@ Model Factory Module
 """
 
 import sys
+
 from django.db import models
 from django.db.models.base import ModelBase
 
@@ -20,8 +21,8 @@ class TreeFactory(ModelBase):
         if not (cls._meta.get_parent_list() or cls._meta.abstract):
             setattr(
                 sys.modules[cls._meta.app_label],
-                '%sClosureModel' % cls._meta.object_name,
-                cls.create_closure_model()
+                "%sClosureModel" % cls._meta.object_name,
+                cls.create_closure_model(),
             )
 
     def create_closure_model(cls):
@@ -29,40 +30,43 @@ class TreeFactory(ModelBase):
         Creates a <Model>ClosureModel model in the same module as the model.
         """
 
-        if hasattr(cls, 'closure_model') and not cls.closure_model is None:
+        if hasattr(cls, "closure_model") and not cls.closure_model is None:
             return cls.closure_model
 
-        model_name = '%sClosureModel' % cls._meta.object_name
+        model_name = "%sClosureModel" % cls._meta.object_name
 
         meta_dict = dict(
             app_label=cls._meta.app_label,
-            unique_together=(('parent', 'child',),),
+            unique_together=(
+                (
+                    "parent",
+                    "child",
+                ),
+            ),
             indexes=[
-                models.Index(fields=['parent', 'child']),
-                models.Index(fields=['parent']),
-                models.Index(fields=['child']),
-            ]
+                models.Index(fields=["parent", "child"]),
+                models.Index(fields=["parent"]),
+                models.Index(fields=["child"]),
+            ],
         )
 
         fields = dict(
             parent=models.ForeignKey(
                 cls._meta.object_name,
                 on_delete=models.CASCADE,
-                related_name='children_set',
+                related_name="children_set",
             ),
-
             child=models.ForeignKey(
                 cls._meta.object_name,
                 on_delete=models.CASCADE,
-                related_name='parents_set',
+                related_name="parents_set",
             ),
-
             depth=models.IntegerField(),
             __module__=cls._meta.app_label,
-            Meta=type('Meta', (object,), meta_dict),
+            Meta=type("Meta", (object,), meta_dict),
         )
 
         model = type(model_name, (models.Model,), fields)
 
-        setattr(cls, 'closure_model', model)
+        setattr(cls, "closure_model", model)
         return model
