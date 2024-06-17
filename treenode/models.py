@@ -15,8 +15,15 @@ from .compat import force_str
 from .factory import TreeFactory
 from .managers import TreeNodeManager
 
+from django.conf import settings
+from django.core.cache import cache as default_cache, caches
 
-treenode_cache = caches['treenode']
+def _get_cache():
+    return caches["treenode"] if "treenode" in settings.CACHES else default_cache
+
+
+treenode_cache = _get_cache()
+
 
 def cached_tree_method(func):
     """
@@ -204,7 +211,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     def get_children(self):
         """Get a list containing all children"""
 
-        return list(self.self.get_children_queryset())
+        return list(self.get_children_queryset())
 
     def get_children_count(self):
         """Get the children count"""
@@ -290,7 +297,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     def get_path(self, prefix='', suffix='', delimiter='.', format_str=''):
         """Return Materialized Path of node"""
 
-        str_ = '{%s}' % format_str
+        str_ = f'{%s}' % format_str
         return prefix + delimiter.join(
             str_.format(i) for i in self.get_breadcrumbs(attr='tn_priority')
         ) + suffix
@@ -524,7 +531,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     @property
     def tn_order(self):
         path = self.get_breadcrumbs(attr='tn_priority')
-        return ''.join(['{:0>6g}'.format(i) for i in path])
+        return ''.join([f'{:0>6g}'.format(i) for i in path])
 
     @cached_tree_method
     def object2dict(self, instance, exclude=[]):
