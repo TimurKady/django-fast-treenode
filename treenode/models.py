@@ -248,19 +248,18 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
 
     def get_descendants_pks(self, include_self=False, depth=None):
         """Get the descendants pks list"""
-        options = dict(parent_id=self.pk, depth__gte=0 if include_self else 1)
-        if depth:
-            options.update({"depth__lte": depth})
+        qs = self.get_descendants_queryset(include_self=include_self, depth=depth)
 
-        qs = self._closure_model.objects.filter(**options)
-        return [ch.child.pk for ch in qs] if qs else []
+        return list(qs.values_list("child_id", flat=True))
 
     @cached_tree_method
     def get_descendants_queryset(self, include_self=False, depth=None):
         """Get the descendants queryset"""
+        options = dict(parent_id=self.pk, depth__gte=0 if include_self else 1)
+        if depth:
+            options.update({"depth__lte": depth})
 
-        pks = self.get_descendants_pks(include_self, depth)
-        return self._meta.model.objects.filter(pk__in=pks)
+        return self._closure_model.objects.filter(**options)
 
     def get_descendants_tree(self):
         """Get a n-dimensional dict representing the model tree"""
