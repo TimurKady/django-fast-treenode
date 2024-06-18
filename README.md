@@ -554,10 +554,15 @@ For example, method `get_descendants_queryset` has a parameter `include_self`. C
 To ensure data consistency, it is crucial to manually clear the cache when such parameter changes are made. You can do this by calling the cache clearing method before invoking the method with different parameters:
 
 ```python
+...
+
 # Manually clear the cache
 treenode_cache.clear()
+
 # Now call the method with the updated parameter
 result = instance.get_descendants_queryset(include_self=True)
+
+...
 ```
 
 While automatic cache invalidation mechanisms are planned for future updates, currently, manual cache clearing is necessary to prevent data inconsistencies. Implementing such practices will safeguard against serving outdated or incorrect information from the cache.
