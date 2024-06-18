@@ -555,6 +555,10 @@ To ensure data consistency, it is crucial to manually clear the cache when such 
 
 ```python
 ...
+# First call the method
+result = instance.get_descendants_queryset(include_self=False)
+
+...
 
 # Manually clear the cache
 treenode_cache.clear()
