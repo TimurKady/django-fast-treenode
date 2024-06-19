@@ -3,12 +3,9 @@
 TreeNode Models Module
 
 """
-
-
-from django.conf import settings
-from django.core.cache import cache as default_cache
 from django.core.cache import caches
 from django.db import models, transaction
+from django.db.models import Max
 from django.utils.translation import gettext_lazy as _
 from six import with_metaclass
 
@@ -19,7 +16,20 @@ from .managers import TreeNodeManager
 
 
 def _get_cache():
-    return caches["treenode"] if "treenode" in settings.CACHES else default_cache
+    """
+    Ensures that 'treenode' uses a separate cache storage.
+
+    This is useful in scenarios where clearing the general cache could inadvertently clear all system caches.
+    By using a dedicated cache for 'treenode', we prevent such cases and ensure that the 'treenode' data
+    remains intact even if other caches are flushed.
+    """
+
+    try:
+        return caches["treenode"]
+    except KeyError:
+        raise KeyError(
+            "The 'treenode' cache is not configured in your settings. Please add 'treenode' to the CACHES setting."
+        )
 
 
 treenode_cache = _get_cache()
@@ -86,7 +96,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     @classmethod
     def get_roots(cls):
         """Get a list with all root nodes"""
-        return list(item for item in cls.get_roots_queryset())
+        return list(cls.get_roots_queryset())
 
     @classmethod
     @cached_tree_method
@@ -106,6 +116,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
             if instance
             else cls.get_roots()
         )
+
         objs_tree = list()
         for item in objs_list:
             objs_tree.append(item.object2dict(item, []))
@@ -205,10 +216,8 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
         """Get the breadcrumbs to current node (self, included)"""
 
         qs = self._closure_model.objects.filter(child=self).order_by("-depth")
-        if attr:
-            return list(getattr(item.parent, attr) for item in qs)
-        else:
-            return list(item.parent for item in qs)
+        lookup_ = f"parent_id__{attr}" if attr else "parent_id"
+        return qs.values_list(lookup_, flat=True)
 
     def get_children(self):
         """Get a list containing all children"""
@@ -232,12 +241,15 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
 
     def get_depth(self):
         """Get the node depth (self, how many levels of descendants)"""
+        # FIXME:Consider scenerios where None is returned i.e. in root nodes
+        # FOr now None is Coalesced to 0
+        max_depth = self._closure_model.objects.filter(parent=self).aggregate(
+            max_depth=models.functions.Coalesce(Max("depth"), 0)
+        )["max_depth"]
 
-        depths = self._closure_model.objects.filter(parent=self).values_list(
-            "depth", flat=True
-        )
-        return max(depths)
+        return max_depth
 
+    @cached_tree_method
     def get_descendants(self, include_self=False, depth=None):
         """Get a list containing all descendants"""
         return list(self.get_descendants_queryset(include_self, depth))
@@ -252,7 +264,6 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
 
         return list(qs.values_list("child_id", flat=True))
 
-    @cached_tree_method
     def get_descendants_queryset(self, include_self=False, depth=None):
         """Get the descendants queryset"""
         options = dict(parent_id=self.pk, depth__gte=0 if include_self else 1)
@@ -287,11 +298,12 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
 
     def get_level(self):
         """Get the node level (self, starting from 1)"""
-
-        levels = self._closure_model.objects.filter(child=self).values_list(
-            "depth", flat=True
-        )
-        return max(levels) + 1
+        # FIXME:Consider scenerios where None is returned i.e. in root nodes
+        # FOr now None is Coalesced to 0
+        max_level = self._closure_model.objects.filter(child=self).aggregate(
+            max_depth=models.functions.Coalesce(Max(models.F("depth")), 0) + 1
+        )["max_depth"]
+        return max_level
 
     def get_path(self, prefix="", suffix="", delimiter=".", format_str=""):
         """Return Materialized Path of node"""
@@ -348,6 +360,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     @cached_tree_method
     def get_siblings_queryset(self):
         """Get the siblings queryset"""
+        # TODO:Add include_self
         if self.tn_parent:
             queryset = self.tn_parent.tn_children.all()
         else:
@@ -396,6 +409,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
         """Return True if the current node is sibling of target_obj"""
         return self in target_obj.tn_parent.tn_children.all()
 
+    # DEPRACATED :Remove delete method as no longer needed
     # I think this method is not needed.
     # Clearing entries in the Closure Table will happen automatically
     # via cascading deletion
@@ -404,8 +418,6 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
     #    """Delete a node if cascade=True (default behaviour), children and
     #    descendants will be deleted too, otherwise children's parent will be
     #    set to None (then children become roots)"""
-
-    # pass
 
     # Public properties
     # All properties map a get_{{property}}() method.
@@ -533,12 +545,14 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
 
     @property
     def tn_order(self):
+        # TODO:This is no longer required and should be removed in coming versions
         path = self.get_breadcrumbs(attr="tn_priority")
         return "".join(["{:0>6g}".format(i) for i in path])
 
     @cached_tree_method
     def object2dict(self, instance, exclude=[]):
         """Convert Class Object to python dict"""
+        # TODO:Optimize this method as it takes a longer time on larger trees
 
         result = dict()
 
@@ -552,9 +566,9 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
             result.update({key: self.object2dict(value, exclude)})
 
         childs = instance.tn_children.all()
-        if childs.count() > 0:
+        if childs.exists():
             result.update(
-                {"children": [obj.object2dict(obj, exclude) for obj in childs.all()]}
+                {"children": [obj.object2dict(obj, exclude) for obj in childs]}
             )
         result.update({"path": instance.get_path(format_str=":d")})
         return result
