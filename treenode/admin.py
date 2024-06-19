@@ -4,9 +4,15 @@ TreeNode Admin Module
 
 """
 
+from typing import Any
+
 from django.contrib import admin
 from django.contrib.admin.views.main import ChangeList
+from django.db.models import Max, OuterRef, Subquery
+from django.db.models.query import QuerySet
+from django.http import HttpRequest
 from django.utils.safestring import mark_safe
+from django.db.models.base import ModelBase
 
 from .forms import TreeNodeForm
 
@@ -18,9 +24,33 @@ class NoPkDescOrderedChangeList(ChangeList):
         rv.remove("-pk") if "-pk" in rv else None
         return tuple()
 
-    def get_queryset(self, request):
-        qs = self.model.objects.all()
-        return qs.select_related("tn_parent")
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Any]:
+        qs = super().get_queryset(request)
+
+        ClosureModel = self.model.closure_model
+
+        max_depth_subquery = (
+            ClosureModel.objects.filter(parent=OuterRef("pk"))
+            .values("parent")
+            .annotate(max_depth=Max("depth"))
+            .values("max_depth")
+        )
+
+        max_level_subquery = (
+            ClosureModel.objects.filter(child=OuterRef("pk"))
+            .values("child")
+            .annotate(max_depth=Max("depth"))
+            .values("max_depth")
+        )
+
+        # Annotating the original queryset where `tn_depth` and `tn_level`
+        # are to be used in _get_treenode_field_display_with_accordion
+        # instead of accessing level and depth instance methods
+        qs = qs.annotate(
+            tn_depth=Subquery(max_depth_subquery), tn_level=Subquery(max_level_subquery)
+        ).select_related("tn_parent")
+
+        return qs
 
 
 class TreeNodeModelAdmin(admin.ModelAdmin):
@@ -55,7 +85,7 @@ class TreeNodeModelAdmin(admin.ModelAdmin):
                 base_list_display.pop(0)
             return (treenode_field_display,) + tuple(base_list_display)
 
-        return base_list_display
+        return base_list_display  # unreachaable code to be removed
 
     def get_changelist(self, request):
         return NoPkDescOrderedChangeList
@@ -64,7 +94,6 @@ class TreeNodeModelAdmin(admin.ModelAdmin):
         return None
 
     def list_to_queryset(self, model, data):
-        from django.db.models.base import ModelBase
 
         if not isinstance(model, ModelBase):
             raise ValueError("%s must be Model" % model)
@@ -115,8 +144,9 @@ class TreeNodeModelAdmin(admin.ModelAdmin):
             % (
                 tn_namespace_key,
                 str(obj.pk),
-                str(obj.depth),
-                str(obj.level),
+                # tn_depth and tn_level are obtained from  annotation on ChangeList.get_queryset
+                str(obj.tn_depth),
+                str(obj.tn_level),
                 str(obj.tn_parent_id or ""),
                 obj.get_display(indent=False),
             )
