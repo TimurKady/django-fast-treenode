@@ -30,7 +30,7 @@ class TreeFactory(ModelBase):
         Creates a <Model>ClosureModel model in the same module as the model.
         """
 
-        if hasattr(cls, "closure_model") and not cls.closure_model is None:
+        if hasattr(cls, "closure_model") and cls.closure_model is not None:
             return cls.closure_model
 
         model_name = "%sClosureModel" % cls._meta.object_name

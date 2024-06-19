@@ -9,10 +9,10 @@ from typing import Any
 from django.contrib import admin
 from django.contrib.admin.views.main import ChangeList
 from django.db.models import Max, OuterRef, Subquery
+from django.db.models.base import ModelBase
 from django.db.models.query import QuerySet
 from django.http import HttpRequest
 from django.utils.safestring import mark_safe
-from django.db.models.base import ModelBase
 
 from .forms import TreeNodeForm
 
