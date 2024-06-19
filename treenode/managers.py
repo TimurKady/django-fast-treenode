@@ -4,8 +4,10 @@ TreeNode Managers Module
 
 """
 
+from django.contrib.postgres.aggregates import StringAgg
 from django.db import models
-from django.db.models import Case, Value, When
+from django.db.models import OuterRef, Subquery
+from django.db.models.functions import Cast, LPad
 
 
 class TreeNodeQuerySet(models.QuerySet):
@@ -50,21 +52,26 @@ class TreeNodeManager(models.Manager):
         Forms a QuerySet ordered by the materialized path.
         """
 
-        qs = TreeNodeQuerySet(self.model, using=self._db)
-        node_list = sorted([node for node in qs], key=lambda x: x.tn_order)
-        pk_list = [node.pk for node in node_list]
+        ClosureModel = self.model.closure_model
+        # TODO:add a Mysql compatible and check for db engine to select an appropiate query
 
-        # Retrieve the queryset with the desired ordering
-        return qs.filter(pk__in=pk_list).order_by(
-            Case(
-                *[
-                    When(pk=pk, then=Value(ordering))
-                    for ordering, pk in enumerate(pk_list)
-                ],
-                default=Value(len(pk_list)),
-                output_field=models.IntegerField(),
+        tn_order_subquery = (
+            ClosureModel.objects.filter(child=OuterRef("pk"))
+            .values("child")
+            .annotate(
+                tn_order=StringAgg(
+                    LPad(Cast("parent__tn_priority", models.TextField())), ""
+                )
             )
+            .values("tn_order")
         )
 
+        qs = TreeNodeQuerySet(self.model, using=self._db)
 
-# End
+        # Retrieve the queryset with the desired ordering
+        qs = qs.annotate(tn_order_str=Subquery(tn_order_subquery)).order_by(
+            models.expressions.OrderBy(models.F("tn_order_str"), nulls_first=True),
+            "id",
+        )
+
+        return qs
