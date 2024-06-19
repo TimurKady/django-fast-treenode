@@ -60,7 +60,7 @@ class TreeNodeManager(models.Manager):
             .values("child")
             .annotate(
                 tn_order=StringAgg(
-                    LPad(Cast("parent__tn_priority", models.TextField())), ""
+                    LPad(Cast("parent__tn_priority", models.TextField()), 6), ""
                 )
             )
             .values("tn_order")
