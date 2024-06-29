@@ -19,8 +19,12 @@ class TreeFactory(ModelBase):
         super().__init__(name, bases, dct)
 
         if not (cls._meta.get_parent_list() or cls._meta.abstract):
+            from django.apps import apps
+
+            app_name = apps.get_app_config(app_label=cls._meta.app_label).name
+
             setattr(
-                sys.modules[cls._meta.app_label],
+                sys.modules[app_name],
                 "%sClosureModel" % cls._meta.object_name,
                 cls.create_closure_model(),
             )
