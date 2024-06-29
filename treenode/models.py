@@ -8,7 +8,6 @@ from django.db import models, transaction
 from django.db.models import Max
 from django.utils.translation import gettext_lazy as _
 from six import with_metaclass
-
 from . import classproperty
 from .compat import force_str
 from .factory import TreeFactory
@@ -92,6 +91,10 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
             return "Node %d" % self.pk
 
     # Public methods
+    def order_me_first(self):
+        # HINT:This could be for all models in UrlBaseModel
+        # orders descending starts from 0 onwards
+        return models.Case(models.When(id=self.id, then=0), default=1)
 
     @classmethod
     def get_roots(cls):
@@ -229,14 +232,16 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
 
         return self.get_children_queryset().count()
 
-    def get_children_pks(self):
+    def get_children_pks(self, include_self=False):
         """Get the children pks list"""
+        qs = self.get_descendants_queryset(include_self=include_self, depth=1)
 
-        return [ch.pk for ch in self.get_children_queryset()]
+        return list(qs.values_list("pk", flat=True))
 
     @cached_tree_method
-    def get_children_queryset(self):
+    def get_children_queryset(self, include_self=False):
         """Get the children queryset"""
+
         return self._meta.model.objects.filter(tn_parent=self.id)
 
     def get_depth(self):
@@ -258,6 +263,7 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
         """Get the descendants count"""
         return self.get_descendants_queryset().count()
 
+    # @cached_tree_method
     def get_descendants_pks(self, include_self=False, depth=None):
         """Get the descendants pks list"""
         qs = self.get_descendants_queryset(include_self=include_self, depth=depth)
