@@ -102,7 +102,6 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
         return list(cls.get_roots_queryset())
 
     @classmethod
-    @cached_tree_method
     def get_roots_queryset(cls):
         """Get root nodes queryset"""
         return cls.objects.filter(tn_parent=None)
@@ -201,7 +200,6 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
 
         return list(item.parent.pk for item in qs)
 
-    @cached_tree_method
     def get_ancestors_queryset(self, include_self=True, depth=None):
         """Get the ancestors queryset (self, ordered from parent to root)"""
 
@@ -238,7 +236,6 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
 
         return list(qs.values_list("pk", flat=True))
 
-    @cached_tree_method
     def get_children_queryset(self, include_self=False):
         """Get the children queryset"""
 
@@ -363,7 +360,6 @@ class TreeNodeModel(with_metaclass(TreeFactory, models.Model)):
         """Get the siblings pks list"""
         return [item.pk for item in self.get_siblings_queryset()]
 
-    @cached_tree_method
     def get_siblings_queryset(self):
         """Get the siblings queryset"""
         # TODO:Add include_self
