@@ -41,6 +41,8 @@ class TreeFactory(ModelBase):
 
         meta_dict = dict(
             app_label=cls._meta.app_label,
+           
+        default_permissions = (),
             unique_together=(
                 (
                     "parent",
