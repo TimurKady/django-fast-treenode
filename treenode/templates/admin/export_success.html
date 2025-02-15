@@ -1,0 +1,26 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+{% block title %}{% trans "Export Successful" %}{% endblock %}
+
+{% block content %}
+<div class="module" style="margin-top: 20px;">
+  <h2>{{ message }}</h2>
+  <div class="module ">
+    <p>{{ manual_download_label }}</p>
+    <p><a id="dl" href="{{ download_url }}" class="button">Download</a></p>
+  </div>
+  <p>
+    <input type="button" class="button" value="{{ button_text }}" onclick="window.location.href='{{ redirect_url }}';">
+  </p>
+
+</div>
+
+<script type="text/javascript">
+    // When the page loads, create a hidden iframe to initiate the download
+
+    window.onload = function() {
+        document.getElementById("dl").click();
+    };
+</script>
+{% endblock %}
+

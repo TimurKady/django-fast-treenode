@@ -1,0 +1,23 @@
+/* Light mode */
+.select2-container--default.select2-light .select2-selection {
+    background-color: #fff;
+    color: #333;
+    border: 1px solid #ccc;
+}
+
+.select2-container--default.select2-light .select2-dropdown {
+    background-color: #fff;
+    color: #333;
+}
+
+/* Dark mode */
+.select2-container--default.select2-dark .select2-selection {
+    background-color: #222;
+    color: #ddd;
+    border: 1px solid #444;
+}
+
+.select2-container--default.select2-dark .select2-dropdown {
+    background-color: #222;
+    color: #ddd;
+}

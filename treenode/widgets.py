@@ -1,43 +1,65 @@
 # -*- coding: utf-8 -*-
 """
+TreeNode Widgets Module
 
-DATACORE ™ 6th Static Normal Form Models
-Widgets Module
+This module defines custom form widgets for handling hierarchical data
+within Django's admin interface. It includes a Select2-based widget
+for tree-structured data selection.
 
+Features:
+- `TreeWidget`: A custom Select2 widget that enhances usability for
+  hierarchical models.
+- Automatically fetches hierarchical data via AJAX.
+- Supports dynamic model binding for reusable implementations.
+- Integrates with Django’s form system.
+
+Version: 2.0.0
 Author: Timur Kady
-Email: kaduevtr@gmail.com
-
+Email: timurkady@yandex.com
 """
+
+
 from django import forms
 
 
 class TreeWidget(forms.Select):
-
-    template_name = 'widgets/select2tree.html'
-    option_template_name = 'widgets/options.html'
+    """Custom Select2 widget for hierarchical data."""
 
     class Media:
-        css = {
-            'all': (
-                'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/css/select2.min.css',
-                'select2tree/select2tree.css',
-            )}
-        js = (
-            'https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.3/js/select2.min.js',
-            'select2tree/select2tree.js',
+        """Mrta class."""
 
+        css = {
+            "all": (
+                "https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css",
+                "treenode/css/tree_widget.css",
+            )
+        }
+        js = (
+            "https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js",
+            "treenode/js/tree_widget.js",
         )
 
-    def create_option(self, name, value, *args, **kwargs):
-        option = super().create_option(name, value, *args, **kwargs)
-        if value:
-            # get icon instance
+    def build_attrs(self, base_attrs, extra_attrs=None):
+        """Add attributes for Select2 integration."""
+        attrs = super().build_attrs(base_attrs, extra_attrs)
+        attrs.setdefault("data-url", "/treenode/tree-autocomplete/")
+        existing_class = attrs.get("class", "")
+        attrs["class"] = f"{existing_class} tree-widget".strip()
+        if "placeholder" in attrs:
+            del attrs["placeholder"]
 
-            item = self.choices.queryset.get(pk=value.value)
-            if item.tn_parent:
-                option['parent'] = item.tn_parent.id
-            else:
-                option['parent'] = ''
-            option['level'] = item.level
-            option['leaf'] = item.is_leaf()
-        return option
+        # Принудительно передаём `model`
+        if "data-forward" not in attrs:
+            try:
+                model = self.choices.queryset.model
+                label = model._meta.app_label
+                model_name = model._meta.model_name
+                model_label = f"{label}.{model_name}"
+                attrs["data-forward"] = f'{{"model": "{model_label}"}}'
+            except Exception:
+                attrs["data-forward"] = '{"model": ""}'
+
+        return attrs
+
+
+# The End

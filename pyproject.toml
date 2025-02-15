@@ -1,3 +1,29 @@
 [build-system]
-requires = ['setuptools>=40.8.0']
-build-backend = 'setuptools.build_meta'
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "django-fast-treenode"
+version = "2.0.0"
+description = "Application for supporting tree (hierarchical) data structure in Django projects"
+readme = "README.md"
+authors = [{ name = "Timur Kady", email = "kaduevtr@gmail.com" }]
+license = { file = "LICENSE" }
+requires-python = ">=3.9"
+dependencies = [
+    "Django >=3.2, <5.0",
+    "pympler >=1.0"
+]
+
+[project.optional-dependencies]
+import_export = [
+    "openpyxl",
+    "pyyaml",
+    "pandas"
+]
+
+[project.urls]
+Homepage = "https://github.com/TimurKady/django-fast-treenode"
+Documentation = "https://github.com/TimurKady/django-fast-treenode#readme"
+Source = "https://github.com/TimurKady/django-fast-treenode"
+Issues = "https://github.com/TimurKady/django-fast-treenode/issues"

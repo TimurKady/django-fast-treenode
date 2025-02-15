@@ -2,135 +2,380 @@
 """
 TreeNode Admin Module
 
+This module provides Django admin integration for the TreeNode model.
+It includes custom tree-based sorting, optimized queries, and
+import/export functionality for hierarchical data structures.
+
+Version: 2.0.0
+Author: Timur Kady
+Email: kaduevtr@gmail.com
 """
 
+
+import os
+import importlib
+from datetime import datetime
 from django.contrib import admin
-from django.utils.safestring import mark_safe
 from django.contrib.admin.views.main import ChangeList
+from django.db import models
+from django.db.models import Case, When, Value, IntegerField
+from django.shortcuts import render, redirect
+from django.urls import path
+from django.utils.encoding import force_str
+from django.utils.safestring import mark_safe
+from django.utils.translation import gettext_lazy as _
+
+from .utils import TreeNodeImporter, TreeNodeExporter
 from .forms import TreeNodeForm
+from .widgets import TreeWidget
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class NoPkDescOrderedChangeList(ChangeList):
+    """Custom ChangeList to remove descending sorting `pk` (default)."""
+
     def get_ordering(self, request, queryset):
-        rv = super().get_ordering(request, queryset)
-        rv = list(rv)
-        rv.remove('-pk') if '-pk' in rv else None
-        return tuple()
+        """
+        Override ordering.
+
+        Overrides the sort order of objects in the list.
+        Django Admin sorts by `-pk` (descending) by default.
+        This method removes `-pk` so that objects are not sorted by ID.
+        """
+        rv = list(super().get_ordering(request, queryset))
+        if '-pk' in rv:
+            rv.remove('-pk')
+        return tuple(rv)
 
     def get_queryset(self, request):
-        qs = self.model.objects.all()
-        return qs.select_related('tn_parent')
+        """
+        Override QuerySet.
+
+        Overrides data selection to optimize queries. Also adds
+        `select_related('tn_parent')` to avoid N+1 queries.
+        """
+        queryset = super(NoPkDescOrderedChangeList, self).get_queryset(request)
+        node_list = sorted(queryset, key=lambda x: x.tn_order)
+        pk_list = [node.pk for node in node_list]
+
+        return queryset.filter(pk__in=pk_list).order_by(
+            Case(*[When(pk=pk, then=Value(index))
+                   for index, pk in enumerate(pk_list)],
+                 default=Value(len(pk_list)),
+                 output_field=IntegerField())
+        ).select_related('tn_parent')
 
 
-class TreeNodeModelAdmin(admin.ModelAdmin):
+class TreeNodeAdminModel(admin.ModelAdmin):
+    """
+    TreeNodeAdmin class.
+
+    Admin configuration for TreeNodeModel with import/export functionality.
+    """
 
     TREENODE_DISPLAY_MODE_ACCORDION = 'accordion'
     TREENODE_DISPLAY_MODE_BREADCRUMBS = 'breadcrumbs'
     TREENODE_DISPLAY_MODE_INDENTATION = 'indentation'
 
-    treenode_display_mode = TREENODE_DISPLAY_MODE_INDENTATION
+    treenode_display_mode = TREENODE_DISPLAY_MODE_ACCORDION
+
+    change_list_template = "admin/tree_node_changelist.html"
+    ordering = []
+    list_per_page = 1000
+    list_sorting_mode_session_key = "treenode_sorting_mode"
 
     form = TreeNodeForm
-    list_per_page = 1000
+    formfield_overrides = {
+        models.ForeignKey: {"widget": TreeWidget()},
+    }
+
+    class Media:
+        """Include custom CSS and JavaScript for admin interface."""
+
+        css = {"all": (
+            "treenode/css/treenode_admin.css",
+        )}
+        js = (
+            'admin/js/jquery.init.js',
+            'treenode/js/treenode_admin.js',
+        )
+
+    def __init__(self, model, admin_site):
+        """Динамически добавляем поле `tn_order` в `list_display`."""
+        super().__init__(model, admin_site)
+
+        # Если `list_display` пустой, берем все `fields`
+        if not self.list_display:
+            self.list_display = [field.name for field in model._meta.fields]
+
+    def get_queryset(self, request):
+        """Override get_ueryset()."""
+        queryset = super().get_queryset(request)
+
+        search_term = request.GET.get("q")
+        if search_term:
+            """
+            print(f"Поиск: {search_term}")
+            search_fields = self.get_search_fields(request)
+            print(f"Поиск по полям: {search_fields}")
+
+            q_objects = Q()
+
+            for field in search_fields:
+                q_objects |= Q(**{f"{field}__icontains": search_term})
+
+
+            queryset = queryset.filter(q_objects)
+            print(f"Найдено записей: {queryset.count()}")
+            """
+            return queryset
+
+        node_list = sorted(queryset, key=lambda x: x.tn_order)
+        pk_list = [node.pk for node in node_list]
+        return queryset.filter(pk__in=pk_list).order_by(
+            Case(*[When(pk=pk, then=Value(index))
+                   for index, pk in enumerate(pk_list)],
+                 default=Value(len(pk_list)),
+                 output_field=IntegerField())
+        )
+
+    def get_search_fields(self, request):
+        """Return the correct search field."""
+        return [self.model.treenode_display_field]
 
     def get_list_display(self, request):
-        base_list_display = super(
-            TreeNodeModelAdmin, self).get_list_display(request)
+        """
+        Generate list_display dynamically.
+
+        Return list or tuple of field names that will be displayed in the
+        change list view.
+        """
+        base_list_display = super().get_list_display(request)
         base_list_display = list(base_list_display)
 
         def treenode_field_display(obj):
             return self._get_treenode_field_display(request, obj)
 
-        treenode_field_display.short_description = self.model._meta.verbose_name
+        verbose_name = self.model._meta.verbose_name
+        treenode_field_display.short_description = verbose_name
         treenode_field_display.allow_tags = True
 
         if len(base_list_display) == 1 and base_list_display[0] == '__str__':
-            return (treenode_field_display, )
+            return (treenode_field_display,)
         else:
             treenode_display_field = getattr(
-                self.model, 'treenode_display_field')
-            if len(base_list_display) >= 1 and base_list_display[0] == treenode_display_field:
+                self.model,
+                'treenode_display_field',
+                '__str__'
+            )
+            if base_list_display[0] == treenode_display_field:
                 base_list_display.pop(0)
-            return (treenode_field_display, ) + tuple(base_list_display)
-
-        return base_list_display
+            return (treenode_field_display,) + tuple(base_list_display)
 
     def get_changelist(self, request):
+        """Get ChangeList."""
         return NoPkDescOrderedChangeList
 
+    def changelist_view(self, request, extra_context=None):
+        """Changelist View."""
+        extra_context = extra_context or {}
+        extra_context['import_export_enabled'] = all(
+            importlib.util.find_spec(pkg)
+            is not None for pkg in ["openpyxl", "pyyaml", "pandas"]
+        )
+        return super().changelist_view(request, extra_context=extra_context)
+
     def get_ordering(self, request):
+        """Get Ordering."""
         return None
 
-    def list_to_queryset(self, model, data):
-        from django.db.models.base import ModelBase
-
-        if not isinstance(model, ModelBase):
-            raise ValueError(
-                "%s must be Model" % model
-            )
-        if not isinstance(data, list):
-            raise ValueError(
-                "%s must be List Object" % data
-            )
-
-        pk_list = [obj.pk for obj in data]
-        return model.objects.filter(pk__in=pk_list)
-
-    def _use_treenode_display_mode(self, request, obj):
-        querystring = (request.GET.urlencode() or '')
-        return len(querystring) <= 2
-
-    def _get_treenode_display_mode(self, request, obj):
-        return self.treenode_display_mode
-
-    def _get_treenode_field_default_display(self, obj):
-        return self._get_treenode_field_display_with_breadcrumbs(obj)
+    def _get_row_display(self, obj):
+        """Return row display for accordion mode."""
+        field = getattr(self.model, 'treenode_display_field')
+        return force_str(getattr(obj, field, obj.pk))
 
     def _get_treenode_field_display(self, request, obj):
-        if not self._use_treenode_display_mode(request, obj):
-            return self._get_treenode_field_default_display(obj)
-        display_mode = self._get_treenode_display_mode(request, obj)
-        if display_mode == TreeNodeModelAdmin.TREENODE_DISPLAY_MODE_ACCORDION:
-            return self._get_treenode_field_display_with_accordion(obj)
-        elif display_mode == TreeNodeModelAdmin.TREENODE_DISPLAY_MODE_BREADCRUMBS:
-            return self._get_treenode_field_display_with_breadcrumbs(obj)
-        elif display_mode == TreeNodeModelAdmin.TREENODE_DISPLAY_MODE_INDENTATION:
-            return self._get_treenode_field_display_with_indentation(obj)
+        """Define how to display nodes depending on the mode."""
+        display_mode = self.treenode_display_mode
+        if display_mode == self.TREENODE_DISPLAY_MODE_ACCORDION:
+            return self._display_with_accordion(obj)
+        elif display_mode == self.TREENODE_DISPLAY_MODE_BREADCRUMBS:
+            return self._display_with_breadcrumbs(obj)
+        elif display_mode == self.TREENODE_DISPLAY_MODE_INDENTATION:
+            return self._display_with_indentation(obj)
         else:
-            return self._get_treenode_field_default_display(obj)
+            return self._display_with_breadcrumbs(obj)
 
-    def _get_treenode_field_display_with_accordion(self, obj):
-        tn_namespace = '%s.%s' % (obj.__module__, obj.__class__.__name__, )
-        tn_namespace_key = tn_namespace.lower().replace('.', '_')
-        return mark_safe(''
-                         '<span class="treenode"'
-                         ' data-treenode-type="%s"'
-                         ' data-treenode-pk="%s"'
-                         ' data-treenode-accordion="1"'
-                         ' data-treenode-depth="%s"'
-                         ' data-treenode-level="%s"'
-                         ' data-treenode-parent="%s">%s</span>' % (
-                             tn_namespace_key,
-                             str(obj.pk),
-                             str(obj.depth),
-                             str(obj.level),
-                             str(obj.tn_parent_id or ''),
-                             obj.get_display(indent=False), ))
+    def _display_with_accordion(self, obj):
+        """Display a tree in accordion style."""
+        parent = str(obj.tn_parent_id or '')
+        text = self._get_row_display(obj)
+        html = (
+            f'<div class="treenode-wrapper" '
+            f'data-treenode-pk="{obj.pk}" '
+            f'data-treenode-depth="{obj.depth}" '
+            f'data-treenode-parent="{parent}">'
+            f'<span class="treenode-content">{text}</span>'
+            f'</div>'
+        )
+        return mark_safe(html)
 
-    def _get_treenode_field_display_with_breadcrumbs(self, obj):
-        obj_display = ''
-        for obj_ancestor in obj.get_ancestors():
-            obj_ancestor_display = obj_ancestor.get_display(indent=False)
-            obj_display += '<span class="treenode-breadcrumbs">%s</span>' % (
-                obj_ancestor_display, )
-        obj_display += obj.get_display(indent=False)
-        return mark_safe('<span class="treenode">%s</span>' % (obj_display, ))
+    def _display_with_breadcrumbs(self, obj):
+        """Display a tree as breadcrumbs."""
+        field = getattr(self.model, 'treenode_display_field')
+        if field is not None:
+            obj_display = " / ".join(obj.get_breadcrumbs(attr=field))
+        else:
+            obj_display = obj.get_path(
+                prefix=_("Node "),
+                suffix=" / " + obj.__str__()
+            )
+        display = f'<span class="treenode-breadcrumbs">{obj_display}</span>'
+        return mark_safe(display)
 
-    def _get_treenode_field_display_with_indentation(self, obj):
-        obj_display = '<span class="treenode-indentation">&mdash;</span>' * obj.ancestors_count
-        obj_display += obj.get_display(indent=False)
-        return mark_safe('<span class="treenode">%s</span>' % (obj_display, ))
+    def _display_with_indentation(self, obj):
+        """Display tree with indents."""
+        indent = '&mdash;' * obj.get_depth()
+        display = f'<span class="treenode-indentation">{indent}</span> {obj}'
+        return mark_safe(display)
 
-    class Media:
-        css = {'all': ('treenode/css/treenode.css',)}
-        js = ['treenode/js/treenode.js']
+    def get_form(self, request, obj=None, **kwargs):
+        """Get Form method."""
+        form = super().get_form(request, obj, **kwargs)
+        if "tn_parent" in form.base_fields:
+            form.base_fields["tn_parent"].widget = TreeWidget()
+        return form
+
+    def get_urls(self):
+        """Extend admin URLs with custom import/export routes."""
+        urls = super().get_urls()
+        custom_urls = [
+            path('import/', self.import_view, name='tree_node_import'),
+            path('export/', self.export_view, name='tree_node_export'),
+        ]
+        return custom_urls + urls
+
+    def import_view(self, request):
+        """
+        Import View.
+
+        File upload processing, auto-detection of format, validation and data
+        import.
+        """
+        if request.method == 'POST':
+            if 'file' not in request.FILES:
+                return render(
+                    request,
+                    "admin/tree_node_import.html",
+                    {"errors": ["No file uploaded."]}
+                )
+
+            file = request.FILES['file']
+            ext = os.path.splitext(file.name)[-1].lower().strip(".")
+
+            allowed_formats = {"csv", "json", "xlsx", "yaml", "tsv"}
+            if ext not in allowed_formats:
+                return render(
+                    request,
+                    "admin/tree_node_import.html",
+                    {"errors": [f"Unsupported file format: {ext}"]}
+                )
+
+            # Import data from file
+            importer = TreeNodeImporter(self.model, file, ext)
+            raw_data = importer.import_data()
+            clean_result = importer.clean(raw_data)
+            errors = importer.finalize_import(clean_result)
+            if errors:
+                return render(
+                    request,
+                    "admin/tree_node_import.html",
+                    {"errors": errors}
+                )
+            self.message_user(
+                request,
+                f"Successfully imported {len(clean_result['create'])} records."
+            )
+            return redirect("..")
+
+        # If the request is not POST, simply display the import form
+        return render(request, "admin/tree_node_import.html")
+
+    def export_view(self, request):
+        """
+        Export view.
+
+        - If the GET parameters include download, we send the file directly.
+        - If the format parameter is missing, we render the format selection
+          page.
+        - If the format is specified, we perform a test export to catch errors.
+
+        If there are no errors, we render the success page with a message, a
+        link for manual download,
+        and a button to go to the model page.
+        """
+        # If the download parameter is present, we give the file directly
+        if 'download' in request.GET:
+            # Get file format
+            export_format = request.GET.get('format', 'csv')
+            # Important: This QuerySet provides a convenient ("friendly") order
+            # of tree node output during export/import.
+            queryset = self.get_queryset()
+            # Filename
+            now = force_str(datetime.now().strftime("%Y-%m-%d %H-%M"))
+            filename = self.model._meta.label + " " + now
+            # Init
+            exporter = TreeNodeExporter(queryset, filename=filename)
+            # Export working
+            response = exporter.export(export_format)
+            logger.debug("DEBUG: File response generated.")
+            return response
+
+        # If the format parameter is not passed, we show the format
+        # selection page
+        if 'format' not in request.GET:
+            return render(request, "admin/tree_node_export.html")
+
+        # If the format is specified, we try to perform a test export
+        # (without returning the file)
+        export_format = request.GET['format']
+        exporter = TreeNodeExporter(
+            self.model.objects.all(),
+            filename=self.model._meta.model_name
+        )
+        try:
+            # Test call to check for export errors (result not used)
+            exporter.export(export_format)
+        except Exception as e:
+            logger.error("Error during test export: %s", e)
+            errors = [str(e)]
+            return render(
+                request,
+                "admin/tree_node_export.html",
+                {"errors": errors}
+            )
+
+        # Form the correct download URL. If the URL already contains
+        # parameters, add them via &download=1, otherwise via ?download=1
+        current_url = request.build_absolute_uri()
+        if "?" in current_url:
+            download_url = current_url + "&download=1"
+        else:
+            download_url = current_url + "?download=1"
+
+        context = {
+            "download_url": download_url,
+            "message": "Your file is ready for export. \
+The download should start automatically.",
+            "manual_download_label": "If the download does not start, \
+click this link.",
+            # Can be replaced with the desired URL to return to the model
+            "redirect_url": "../",
+            "button_text": "Return to model"
+        }
+        return render(request, "admin/export_success.html", context)
+
+# The End

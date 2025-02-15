@@ -1,0 +1,21 @@
+{# templates/widgets/tree_widget.html #}
+{% load widget_tweaks %}
+<select name="{{ widget.name }}" {% include "django/forms/widgets/attrs.html" %}>
+  {% if widget.optgroups %}
+    {% for group, options, index in widget.optgroups %}
+      {% if group %}
+        <optgroup label="{{ group }}">
+      {% endif %}
+      {% for option in options %}
+        <option value="{{ option.value|stringformat:'s' }}"
+                data-level="{{ option.attrs.data_level|default:"0" }}"
+                {% if option.selected %}selected{% endif %}>
+          {{ option.label }}
+        </option>
+      {% endfor %}
+      {% if group %}
+        </optgroup>
+      {% endif %}
+    {% endfor %}
+  {% endif %}
+</select>

@@ -1,0 +1,106 @@
+/* 
+TreeNode Admin Stylesheet
+
+This CSS file defines styles for the TreeNode admin interface, 
+including tree structure visualization, interactive toggles, 
+and theme support.
+
+Features:
+- Tree node toggle styling for expanding/collapsing nodes.
+- Supports both light and dark themes.
+- Smooth hover effects and animations.
+- Consistent layout adjustments for better UI interaction.
+
+Version: 2.0.0
+Author: Timur Kady
+Email: timurkady@yandex.com
+*/
+
+
+@keyframes anim {
+    0% {width: 0px; height: 0px;}
+    100% {width: 100px; height: 100px;}
+}
+
+.treenode-space {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    margin-right: 7px !important;
+    background-color: transparent;
+    border: 1px solid transparent;
+    padding: 1px;
+}
+
+.treenode-toggle {
+    display: inline-block;
+    text-align: center;
+    font-weight: bold;
+    font-size: 10px;
+    width: 10px;
+    height: 10px;
+    line-height: 10px;
+    padding: 1px;
+    cursor: pointer;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    margin-right: 7px !important;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.treenode-toggle:hover {
+    background-color: #e0e0e0;
+    color: #007bff;
+}
+
+.dark-theme .treenode-toggle {
+    color: #ccc;
+    background-color: #444;
+    border: 1px solid #555;
+}
+
+.dark-theme .treenode-toggle:hover {
+    background-color: #333;
+    color: #fff;
+}
+
+.treenode-toggle {
+    font-weight: bold;
+    display: inline-block;
+
+    text-align: center;
+    cursor: pointer;
+    margin-right: 5px;
+    border-radius: 4px;
+
+    padding: 2px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.treenode-toggle:hover {
+    background-color: #e0e0e0;
+    color: #007bff;
+}
+
+.dark-theme .treenode-toggle {
+    color: #ccc;
+    background-color: #444;
+    border: 1px solid #555;
+}
+
+.dark-theme .treenode-toggle:hover {
+    background-color: #333;
+    color: #fff;
+}
+
+.treenode-wrapper {
+    display: inline-block;
+}
+
+.dark-theme .treenode-toggle {
+    color: #ccc;
+}

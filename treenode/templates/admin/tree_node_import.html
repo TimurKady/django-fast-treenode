@@ -1,0 +1,27 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+    <div class="module">
+        <h2>Import Data</h2>
+        {% if errors %}
+            <div class="errornote">
+                <p>Errors occurred while importing the data:</p>
+                <ul>
+                    {% for error in errors %}
+                        <li>{{ error }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+        {% endif %}
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div>
+                <label for="file">Choose file:</label>
+                <input type="file" name="file" id="file" required>
+            </div>
+            <div class="form-group" style="margin-top: 35px;">
+                <button type="submit" class="button">Import</button>
+                <a href=".." class="button cancel">Cancel</a>
+            </div>
+        </form>
+    </div>
+{% endblock %}
