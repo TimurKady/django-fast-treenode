@@ -128,37 +128,6 @@ class YoursForm(TreeNodeForm):
     # Your code is here
 ```
 
-## Updating to django-fast-treenode 2.X
-### Overview
-If you are upgrading from a previous version, you need to follow these steps to ensure compatibility and proper functionality.
-
-### Update Process
-1. **Upgrade the package**
-   Run the following command to install the latest version:
-
-   ```bash
-   pip install --upgrade django-fast-treenode
-   ```
-
-2. **Apply database migrations**
-   After upgrading, you need to apply the necessary database migrations:
-
-   ```bash
-   python manage.py makemigrations
-   python manage.py migrate
-   ```
-
-3. **Restart the application**
-   Finally, restart your Django application to apply all changes:
-
-   ```bash
-   python manage.py runserver
-   ```
-
-**Important Notes**: Failing to apply migrations (`migrate`) after upgrading may lead to errors when interacting with tree nodes.
-
-By following these steps, you will ensure a smooth transition to the latest version of django-fast-treenode without data inconsistencies.
-
 
 ## Usage
 ### Methods/Properties
