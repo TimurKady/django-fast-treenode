@@ -6,7 +6,7 @@ This module provides Django admin integration for the TreeNode model.
 It includes custom tree-based sorting, optimized queries, and
 import/export functionality for hierarchical data structures.
 
-Version: 2.0.0
+Version: 2.0.6
 Author: Timur Kady
 Email: kaduevtr@gmail.com
 """
@@ -81,7 +81,7 @@ class TreeNodeAdminModel(admin.ModelAdmin):
     TREENODE_DISPLAY_MODE_INDENTATION = 'indentation'
 
     treenode_display_mode = TREENODE_DISPLAY_MODE_ACCORDION
-
+    import_export = False  # Track import/export availability
     change_list_template = "admin/tree_node_changelist.html"
     ordering = []
     list_per_page = 1000
@@ -107,9 +107,24 @@ class TreeNodeAdminModel(admin.ModelAdmin):
         """Динамически добавляем поле `tn_order` в `list_display`."""
         super().__init__(model, admin_site)
 
-        # Если `list_display` пустой, берем все `fields`
+        # If `list_display` is empty, take all `fields`
         if not self.list_display:
             self.list_display = [field.name for field in model._meta.fields]
+
+        # Check for necessary dependencies
+        self.import_export = all(
+            importlib.util.find_spec(pkg) is not None
+            for pkg in ["openpyxl", "pyyaml", "pandas"]
+        )
+
+        if self.import_export:
+            from .utils import TreeNodeImporter, TreeNodeExporter
+
+            self.TreeNodeImporter = TreeNodeImporter
+            self.TreeNodeExporter = TreeNodeExporter
+        else:
+            self.TreeNodeImporter = None
+            self.TreeNodeExporter = None
 
     def get_queryset(self, request):
         """Override get_ueryset()."""
@@ -182,10 +197,7 @@ class TreeNodeAdminModel(admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         """Changelist View."""
         extra_context = extra_context or {}
-        extra_context['import_export_enabled'] = all(
-            importlib.util.find_spec(pkg)
-            is not None for pkg in ["openpyxl", "pyyaml", "pandas"]
-        )
+        extra_context['import_export_enabled'] = self.import_export
         return super().changelist_view(request, extra_context=extra_context)
 
     def get_ordering(self, request):
@@ -250,12 +262,19 @@ class TreeNodeAdminModel(admin.ModelAdmin):
         return form
 
     def get_urls(self):
-        """Extend admin URLs with custom import/export routes."""
+        """
+        Extend admin URLs with custom import/export routes.
+
+        Register these URLs only if all the required packages are installed.
+        """
         urls = super().get_urls()
-        custom_urls = [
-            path('import/', self.import_view, name='tree_node_import'),
-            path('export/', self.export_view, name='tree_node_export'),
-        ]
+        if self.import_export:
+            custom_urls = [
+                path('import/', self.import_view, name='tree_node_import'),
+                path('export/', self.export_view, name='tree_node_export'),
+            ]
+        else:
+            custom_urls = []
         return custom_urls + urls
 
     def import_view(self, request):
@@ -265,6 +284,14 @@ class TreeNodeAdminModel(admin.ModelAdmin):
         File upload processing, auto-detection of format, validation and data
         import.
         """
+        if not self.import_export:
+            self.message_user(
+                request,
+                "Import functionality is disabled because required \
+packages are not installed."
+            )
+            return redirect("..")
+
         if request.method == 'POST':
             if 'file' not in request.FILES:
                 return render(
@@ -317,6 +344,14 @@ class TreeNodeAdminModel(admin.ModelAdmin):
         link for manual download,
         and a button to go to the model page.
         """
+        if not self.import_export:
+            self.message_user(
+                request,
+                "Export functionality is disabled because required \
+packages are not installed."
+            )
+            return redirect("..")
+
         # If the download parameter is present, we give the file directly
         if 'download' in request.GET:
             # Get file format
