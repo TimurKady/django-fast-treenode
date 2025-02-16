@@ -4,15 +4,35 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-fast-treenode"
-version = "2.0.0"
+version = "2.0.4"
 description = "Application for supporting tree (hierarchical) data structure in Django projects"
 readme = "README.md"
-authors = [{ name = "Timur Kady", email = "kaduevtr@gmail.com" }]
+authors = [{ name = "Timur Kady", email = "timurkady@yandex.com" }]
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
 dependencies = [
-    "Django >=3.2, <5.0",
+    "Django >=4.0",
     "pympler >=1.0"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Framework :: Django",
+    "Framework :: Django :: 4.0",
+    "Framework :: Django :: 4.1",
+    "Framework :: Django :: 4.2",
+    "Framework :: Django :: 5.0",
+    "Framework :: Django :: 5.1",
+    "Framework :: Django :: 5.2",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent"
 ]
 
 [project.optional-dependencies]
