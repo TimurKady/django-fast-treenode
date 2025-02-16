@@ -1,4 +1,4 @@
-import importlib.util
+import importlib
 
 extra = all(
     importlib.util.find_spec(pkg) is not None
