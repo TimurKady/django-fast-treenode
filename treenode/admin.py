@@ -25,7 +25,6 @@ from django.utils.encoding import force_str
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
-from .utils import TreeNodeImporter, TreeNodeExporter
 from .forms import TreeNodeForm
 from .widgets import TreeWidget
 
