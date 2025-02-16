@@ -547,7 +547,7 @@ obj.is_sibling_of(target_obj)
 ```
 
 #### `update_tree`
-**Update tree** manually, useful after **bulk updates**:
+**Update tree** manually:
 ```python
 cls.update_tree()
 ```
@@ -561,8 +561,9 @@ In v2.0, the caching mechanism has been improved to prevent excessive memory usa
 ``` python
 TREENODE_CACHE_LIMIT = 100
 ```
-**Automatic Management**: In most cases, users don’t need to manually manage cache operations.
-**Manual Cache Clearing**:
+**Automatic Management**. In most cases, users don’t need to manually manage cache operations.All methods that somehow change the state of models reset the tree cache automatically.
+
+**Manual Cache Clearing**. If for some reason you need to reset the cache, you can do it in two ways:
 - **Clear cache for a single model**: Use `clear_cache()` at the model level:
     ```python
     MyTreeNodeModel.clear_cache()
