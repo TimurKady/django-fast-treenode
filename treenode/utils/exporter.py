@@ -12,7 +12,7 @@ Features:
 - Provides optimized data extraction for QuerySets.
 - Generates downloadable files with appropriate HTTP responses.
 
-Version: 2.0.0
+Version: 2.0.10
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -21,7 +21,8 @@ Email: timurkady@yandex.com
 import csv
 import json
 import yaml
-import pandas as pd
+import xlsxwriter
+import numpy as np
 from io import BytesIO
 from django.http import HttpResponse
 import logging
@@ -67,10 +68,16 @@ class TreeNodeExporter:
                     record[key] = None
         return record
 
+    def get_sorted_queryset(self):
+        """Sort queryset by tn_order."""
+        queryset_list = list(self.queryset)
+        tn_orders = np.array([obj.tn_order for obj in queryset_list])
+        return [queryset_list[int(i)] for i in np.argsort(tn_orders)]
+
     def get_data(self):
         """Return a list of data from QuerySet as dictionaries."""
         data = []
-        for obj in self.queryset:
+        for obj in self.get_sorted_queryset():
             record = {}
             for field in self.fields:
                 value = getattr(obj, field, None)
@@ -83,7 +90,7 @@ class TreeNodeExporter:
                             ensure_ascii=False)
                     elif field_object.many_to_one:
                         # ForeignKey - save as ID
-                        record[field] = value.id if value else None
+                        record[field] = getattr(value, "id", None)
                     else:
                         record[field] = value
                 else:
@@ -105,22 +112,40 @@ class TreeNodeExporter:
         """Export to JSON with UUID serialization handling."""
         response = HttpResponse(content_type="application/octet-stream")
         response["Content-Disposition"] = f'attachment; filename="{self.filename}.json"'
-        json.dump(self.get_data(), response,
-                  ensure_ascii=False, indent=4, default=str)
+        json.dump(
+            self.get_data(),
+            response,
+            ensure_ascii=False,
+            indent=4,
+            default=str
+        )
         return response
 
     def to_xlsx(self):
         """Export to XLSX."""
         response = HttpResponse(
-            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
         response["Content-Disposition"] = f'attachment; filename="{self.filename}.xlsx"'
-        df = pd.DataFrame(self.get_data())
-        with BytesIO() as buffer:
-            writer = pd.ExcelWriter(buffer, engine="xlsxwriter")
-            df.to_excel(writer, index=False)
-            writer.close()
-            response.write(buffer.getvalue())
-        return response
+
+        data = self.get_data()
+        output = BytesIO()
+        workbook = xlsxwriter.Workbook(output)
+        worksheet = workbook.add_worksheet()
+
+        # Записываем заголовки
+        headers = list(data[0].keys()) if data else []
+        for col_num, header in enumerate(headers):
+            worksheet.write(0, col_num, header)
+
+        # Записываем строки данных
+        for row_num, row in enumerate(data, start=1):
+            for col_num, key in enumerate(headers):
+                worksheet.write(row_num, col_num, row[key])
+
+        workbook.close()
+        output.seek(0)
+        return response.write(output.read())
 
     def to_yaml(self):
         """Export to YAML with proper attachment handling."""
@@ -135,7 +160,10 @@ class TreeNodeExporter:
         response = HttpResponse(content_type="application/octet-stream")
         response["Content-Disposition"] = f'attachment; filename="{self.filename}.tsv"'
         writer = csv.DictWriter(
-            response, fieldnames=self.fields, delimiter="	")
+            response,
+            fieldnames=self.fields,
+            delimiter="	"
+        )
         writer.writeheader()
         writer.writerows(self.get_data())
         return response

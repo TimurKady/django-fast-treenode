@@ -2,10 +2,12 @@
 
 {% block object-tools-items %}
     {{ block.super }}
+    {% if import_export_enabled %}
     <li>
         <a href="import/" class="button">Import</a>
     </li>
     <li>
         <a href="export/" class="button">Export</a>
     </li>
+    {% endif %}
 {% endblock %}

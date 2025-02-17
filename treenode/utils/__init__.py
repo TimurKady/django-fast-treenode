@@ -1,9 +1,9 @@
 import importlib
 
-extra = all(
-    importlib.util.find_spec(pkg) is not None
-    for pkg in ["openpyxl", "pyyaml", "pandas"]
-)
+extra = all([
+            importlib.util.find_spec(pkg) is not None
+            for pkg in ["openpyxl", "yaml", "xlsxwriter"]
+        ])
 
 if extra:
     from .exporter import TreeNodeExporter
@@ -11,4 +11,3 @@ if extra:
     __all__ = ["TreeNodeExporter", "TreeNodeImporter"]
 else:
     __all__ = []
-

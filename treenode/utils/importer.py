@@ -21,8 +21,8 @@ Email: timurkady@yandex.com
 import csv
 import json
 import yaml
+import openpyxl
 import math
-import pandas as pd
 from io import BytesIO, StringIO
 from django.db import transaction
 import logging
@@ -55,13 +55,13 @@ class TreeNodeImporter:
         self.file_content = file.read()
 
     def get_text_content(self):
-        """Возвращает содержимое файла в виде строки."""
+        """Return the contents of a file as a string."""
         if isinstance(self.file_content, bytes):
             return self.file_content.decode("utf-8")
         return self.file_content
 
     def import_data(self):
-        """Импортирует данные и возвращает список словарей."""
+        """Import data and returns a list of dictionaries."""
         importers = {
             "csv": self.from_csv,
             "json": self.from_json,
@@ -73,37 +73,46 @@ class TreeNodeImporter:
             raise ValueError("Unsupported import format")
 
         raw_data = importers[self.format]()
-        # Обработка: фильтрация полей, упаковка сложных значений и приведение типов
+        # Processing: field filtering, complex value packing and type casting
         processed_data = self.process_records(raw_data)
         return processed_data
 
     def from_csv(self):
-        """Импорт из CSV."""
+        """Import from CSV."""
         text = self.get_text_content()
         return list(csv.DictReader(StringIO(text)))
 
     def from_json(self):
-        """Импорт из JSON."""
+        """Import from JSON."""
         return json.loads(self.get_text_content())
 
     def from_xlsx(self):
-        """Импорт из XLSX (Excel)."""
-        df = pd.read_excel(BytesIO(self.file_content))
-        return df.to_dict(orient="records")
+        """Import from XLSX (Excel)."""
+        file_stream = BytesIO(self.file_content)
+        rows = []
+        wb = openpyxl.load_workbook(file_stream, read_only=True)
+        ws = wb.active
+        headers = [
+            cell.value for cell in next(ws.iter_rows(min_row=1, max_row=1))
+        ]
+        for row in ws.iter_rows(min_row=2, values_only=True):
+            rows.append(dict(zip(headers, row)))
+        return rows
 
     def from_yaml(self):
-        """Импорт из YAML."""
+        """Import from YAML."""
         return yaml.safe_load(self.get_text_content())
 
     def from_tsv(self):
-        """Импорт из TSV."""
+        """Import from TSV."""
         text = self.get_text_content()
         return list(csv.DictReader(StringIO(text), delimiter="\t"))
 
     def filter_fields(self, record):
         """
-        Фильтрует запись согласно маппингу.
-        Остаются только нужные ключи, при этом имена переименовываются.
+        Filter the record according to the mapping.
+
+        Only the necessary keys remain, while the names are renamed.
         """
         new_record = {}
         for file_key, model_field in self.mapping.items():
@@ -112,7 +121,9 @@ class TreeNodeImporter:
 
     def process_complex_fields(self, record):
         """
-        Если значение поля — словарь или список, упаковывает его в JSON-строку.
+        Pack it into a JSON string.
+
+        If the field value is a dictionary or list.
         """
         for key, value in record.items():
             if isinstance(value, (list, dict)):
@@ -125,13 +136,12 @@ class TreeNodeImporter:
 
     def cast_record_types(self, record):
         """
-        Приводит значения полей записи к типам, определённым в модели.
+        Casts the values ​​of the record fields to the types defined in the model.
 
-        Для каждого поля вызывается его метод to_python(). Если значение равно nan,
-        оно заменяется на None.
-
-        Для ForeignKey-полей (many-to-one) значение записывается в атрибут <field>_id,
-        а исходный ключ удаляется.
+        For each field, its to_python() method is called. If the value is nan,
+        it is replaced with None.
+        For ForeignKey fields (many-to-one), the value is written to 
+        the <field>_id attribute, and the original key is removed.
         """
         for field in self.model._meta.fields:
             field_name = field.name
@@ -166,10 +176,11 @@ class TreeNodeImporter:
 
     def process_records(self, records):
         """
-        Обрабатывает список записей:
-          1. Фильтрует поля по маппингу.
-          2. Упаковывает сложные (вложенные) данные в JSON.
-          3. Приводит значения каждого поля к типам, определённым в модели.
+        Process a list of records.
+
+        1. Filters fields by mapping.
+        2. Packs complex (nested) data into JSON.
+        3. Converts the values ​​of each field to the types defined in the model.
         """
         processed = []
         for record in records:
@@ -181,20 +192,24 @@ class TreeNodeImporter:
 
     def clean(self, raw_data):
         """
-        Валидирует и подготавливает данные для массового сохранения объектов.
+        Validat and prepare data for bulk saving of objects.
 
-        Для каждой записи:
-         - Проверяется наличие уникального поля 'id'.
-         - Значение родительской связи (tn_parent или tn_parent_id) сохраняется отдельно и удаляется из данных.
-         - Приводит данные к типам модели.
-         - Пытается создать экземпляр модели с валидацией через full_clean().
+        For each record:
+        - The presence of a unique field 'id' is checked.
+        - The value of the parent relationship (tn_parent or tn_parent_id)
+          is saved separately and removed from the data.
+        - Casts the data to model types.
+        - Attempts to create a model instance with validation via full_clean().
 
-        Возвращает словарь со следующими ключами:
-          'create'         - список объектов для создания,
-          'update'         - список объектов для обновления (в данном случае оставим пустым),
-          'update_fields'  - список полей, подлежащих обновлению (например, ['tn_parent']),
-          'fk_mappings'    - словарь {id_объекта: значение родительского ключа из исходных данных},
-          'errors'         - список ошибок валидации.
+        Returns a dictionary with the following keys:
+        'create' - a list of objects to create,
+        'update' - a list of objects to update (in this case, we leave 
+        it empty),
+        'update_fields' - a list of fields to update (for example, 
+        ['tn_parent']),
+        'fk_mappings' - a dictionary of {object_id: parent key value from 
+        the source data},
+        'errors' - a list of validation errors.
         """
         result = {
             "create": [],
@@ -211,7 +226,7 @@ class TreeNodeImporter:
                 logger.warning(error_message)
                 continue
 
-            # Сохраняем значение родительской связи и удаляем его из данных
+            # Save the parent relationship value and remove it from the data
             fk_value = None
             if 'tn_parent' in data:
                 fk_value = data['tn_parent']
@@ -220,14 +235,14 @@ class TreeNodeImporter:
                 fk_value = data['tn_parent_id']
                 del data['tn_parent_id']
 
-            # Приводим значения к типам модели
+            # Convert values ​​to model types
             data = self.cast_record_types(data)
 
             try:
                 instance = self.model(**data)
                 instance.full_clean()
                 result["create"].append(instance)
-                # Сохраняем значение родительского ключа для последующего обновления
+                # Save the parent key value for future update
                 result["fk_mappings"][instance.id] = fk_value
             except Exception as e:
                 error_message = f"Validation error creating {data}: {e}"
@@ -235,16 +250,17 @@ class TreeNodeImporter:
                 logger.warning(error_message)
                 continue
 
-        # В данном сценарии обновление происходит только для родительской связи
+        # In this scenario, the update occurs only for the parent relationship
         result["update_fields"] = ['tn_parent']
         return result
 
     def save_data(self, create, update, fields):
         """
-        Сохраняет объекты в базу в рамках атомарной транзакции.
-        :param create: список объектов для создания.
-        :param update: список объектов для обновления.
-        :param fields: список полей, которые обновляются (для bulk_update).
+        Save objects to the database as part of an atomic transaction.
+
+        :param create: list of objects to create.
+        :param update: list of objects to update.
+        :param fields: list of fields to update (for bulk_update).
         """
         with transaction.atomic():
             if update:
@@ -254,12 +270,14 @@ class TreeNodeImporter:
 
     def update_parent_relations(self, fk_mappings):
         """
-        Обновляет поле tn_parent для объектов, используя сохранённые fk_mappings.
-        :param fk_mappings: словарь {id_объекта: значение родительского ключа из исходных данных}
+        Update the tn_parent field for objects using the saved fk_mappings.
+
+        :param fk_mappings: dictionary {object_id: parent key value from 
+        the source data}
         """
         instances_to_update = []
         for obj_id, parent_id in fk_mappings.items():
-            # Если родитель не указан, пропускаем
+            # If parent is not specified, skip
             if not parent_id:
                 continue
             try:
@@ -269,28 +287,35 @@ class TreeNodeImporter:
                 instances_to_update.append(instance)
             except self.model.DoesNotExist:
                 logger.warning(
-                    "Parent with id %s not found for instance %s", parent_id, obj_id)
+                    "Parent with id %s not found for instance %s",
+                    parent_id,
+                    obj_id
+                )
         if instances_to_update:
             update_fields = ['tn_parent']
             self.model.objects.bulk_update(
                 instances_to_update, update_fields, batch_size=1000)
 
-    # Если захочешь объединить операции сохранения и обновления родителей,
-    # можно добавить метод, который вызовет save_data и update_parent_relations последовательно.
+        # If you want to combine the save and update parent operations,
+        # you can add a method that calls save_data and update_parent_relations
+        # sequentially.
+
     def finalize_import(self, clean_result):
         """
-        Финализирует импорт: сохраняет новые объекты и обновляет родительские связи.
-        :param clean_result: словарь, возвращённый методом clean.
+        Finalize the import: saves new objects and updates parent links.
+
+        :param clean_result: dictionary returned by the clean method.
         """
-        # Если есть ошибки – можно прервать импорт или вернуть их для обработки
+        # If there are errors, you can interrupt the import or return them
+        # for processing
         if clean_result["errors"]:
             return clean_result["errors"]
 
-        # Сначала выполняем массовое создание
+        # First we do a bulk creation
         self.save_data(
             clean_result["create"], clean_result["update"], clean_result["update_fields"])
-        # Затем обновляем родительские связи
+        # Then we update the parent links
         self.update_parent_relations(clean_result["fk_mappings"])
-        return None  # Или вернуть успешное сообщение
+        return None  # Or return a success message
 
 # The End

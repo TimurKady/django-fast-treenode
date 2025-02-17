@@ -6,7 +6,7 @@ This module provides Django admin integration for the TreeNode model.
 It includes custom tree-based sorting, optimized queries, and
 import/export functionality for hierarchical data structures.
 
-Version: 2.0.6
+Version: 2.0.10
 Author: Timur Kady
 Email: kaduevtr@gmail.com
 """
@@ -14,11 +14,11 @@ Email: kaduevtr@gmail.com
 
 import os
 import importlib
+import numpy as np
 from datetime import datetime
 from django.contrib import admin
 from django.contrib.admin.views.main import ChangeList
 from django.db import models
-from django.db.models import Case, When, Value, IntegerField
 from django.shortcuts import render, redirect
 from django.urls import path
 from django.utils.encoding import force_str
@@ -33,8 +33,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class NoPkDescOrderedChangeList(ChangeList):
-    """Custom ChangeList to remove descending sorting `pk` (default)."""
+class SortedChangeList(ChangeList):
+    """Custom ChangeList that sorts results in Python (after DB query)."""
 
     def get_ordering(self, request, queryset):
         """
@@ -44,28 +44,26 @@ class NoPkDescOrderedChangeList(ChangeList):
         Django Admin sorts by `-pk` (descending) by default.
         This method removes `-pk` so that objects are not sorted by ID.
         """
-        rv = list(super().get_ordering(request, queryset))
-        if '-pk' in rv:
-            rv.remove('-pk')
-        return tuple(rv)
+        # Remove the default '-pk' ordering if present.
+        ordering = list(super().get_ordering(request, queryset))
+        if '-pk' in ordering:
+            ordering.remove('-pk')
+        return tuple(ordering)
 
     def get_queryset(self, request):
-        """
-        Override QuerySet.
+        """Get QuerySet with select_related."""
+        return super().get_queryset(request).select_related('tn_parent')
 
-        Overrides data selection to optimize queries. Also adds
-        `select_related('tn_parent')` to avoid N+1 queries.
-        """
-        queryset = super(NoPkDescOrderedChangeList, self).get_queryset(request)
-        node_list = sorted(queryset, key=lambda x: x.tn_order)
-        pk_list = [node.pk for node in node_list]
-
-        return queryset.filter(pk__in=pk_list).order_by(
-            Case(*[When(pk=pk, then=Value(index))
-                   for index, pk in enumerate(pk_list)],
-                 default=Value(len(pk_list)),
-                 output_field=IntegerField())
-        ).select_related('tn_parent')
+    def get_results(self, request):
+        """Return sorted results for ChangeList rendering."""
+        # Populate self.result_list with objects from the DB.
+        super().get_results(request)
+        result_list = self.result_list
+        # Extract tn_order values from each object.
+        tn_orders = np.array([obj.tn_order for obj in result_list])
+        # Get sorted indices based on tn_order (ascending order).
+        # Reorder the original result_list based on the sorted indices.
+        self.result_list = [result_list[int(i)] for i in np.argsort(tn_orders)]
 
 
 class TreeNodeAdminModel(admin.ModelAdmin):
@@ -111,10 +109,16 @@ class TreeNodeAdminModel(admin.ModelAdmin):
             self.list_display = [field.name for field in model._meta.fields]
 
         # Check for necessary dependencies
-        self.import_export = all(
+        self.import_export = all([
             importlib.util.find_spec(pkg) is not None
-            for pkg in ["openpyxl", "pyyaml", "pandas"]
-        )
+            for pkg in ["openpyxl", "yaml", "xlsxwriter"]
+        ])
+        if not self.import_export:
+            check_results = [
+                pkg for pkg in ["openpyxl", "pyyaml", "xlsxwriter"] if importlib.util.find_spec(pkg) is not None
+            ]
+            logger.info("Packages" + ", ".join(check_results) + " are \
+not installed. Export and import functions are disabled.")
 
         if self.import_export:
             from .utils import TreeNodeImporter, TreeNodeExporter
@@ -126,35 +130,12 @@ class TreeNodeAdminModel(admin.ModelAdmin):
             self.TreeNodeExporter = None
 
     def get_queryset(self, request):
-        """Override get_ueryset()."""
+        """Override get_queryset to simply return an optimized queryset."""
         queryset = super().get_queryset(request)
-
-        search_term = request.GET.get("q")
-        if search_term:
-            """
-            print(f"Поиск: {search_term}")
-            search_fields = self.get_search_fields(request)
-            print(f"Поиск по полям: {search_fields}")
-
-            q_objects = Q()
-
-            for field in search_fields:
-                q_objects |= Q(**{f"{field}__icontains": search_term})
-
-
-            queryset = queryset.filter(q_objects)
-            print(f"Найдено записей: {queryset.count()}")
-            """
+        # If a search term is present, leave the queryset as is.
+        if request.GET.get("q"):
             return queryset
-
-        node_list = sorted(queryset, key=lambda x: x.tn_order)
-        pk_list = [node.pk for node in node_list]
-        return queryset.filter(pk__in=pk_list).order_by(
-            Case(*[When(pk=pk, then=Value(index))
-                   for index, pk in enumerate(pk_list)],
-                 default=Value(len(pk_list)),
-                 output_field=IntegerField())
-        )
+        return queryset.select_related('tn_parent')
 
     def get_search_fields(self, request):
         """Return the correct search field."""
@@ -190,8 +171,8 @@ class TreeNodeAdminModel(admin.ModelAdmin):
             return (treenode_field_display,) + tuple(base_list_display)
 
     def get_changelist(self, request):
-        """Get ChangeList."""
-        return NoPkDescOrderedChangeList
+        """Use SortedChangeList to sort the results at render time."""
+        return SortedChangeList
 
     def changelist_view(self, request, extra_context=None):
         """Changelist View."""
@@ -311,7 +292,7 @@ packages are not installed."
                 )
 
             # Import data from file
-            importer = TreeNodeImporter(self.model, file, ext)
+            importer = self.TreeNodeImporter(self.model, file, ext)
             raw_data = importer.import_data()
             clean_result = importer.clean(raw_data)
             errors = importer.finalize_import(clean_result)
@@ -355,14 +336,14 @@ packages are not installed."
         if 'download' in request.GET:
             # Get file format
             export_format = request.GET.get('format', 'csv')
-            # Important: This QuerySet provides a convenient ("friendly") order
-            # of tree node output during export/import.
-            queryset = self.get_queryset()
             # Filename
             now = force_str(datetime.now().strftime("%Y-%m-%d %H-%M"))
             filename = self.model._meta.label + " " + now
             # Init
-            exporter = TreeNodeExporter(queryset, filename=filename)
+            exporter = self.TreeNodeExporter(
+                self.get_queryset(),
+                filename=filename
+            )
             # Export working
             response = exporter.export(export_format)
             logger.debug("DEBUG: File response generated.")
@@ -376,7 +357,7 @@ packages are not installed."
         # If the format is specified, we try to perform a test export
         # (without returning the file)
         export_format = request.GET['format']
-        exporter = TreeNodeExporter(
+        exporter = self.TreeNodeExporter(
             self.model.objects.all(),
             filename=self.model._meta.model_name
         )

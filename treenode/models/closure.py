@@ -11,7 +11,7 @@ Features:
 - Implements cached queries for improved performance.
 - Provides bulk operations for inserting, moving, and deleting nodes.
 
-Version: 2.0.0
+Version: 2.0.1
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -53,6 +53,7 @@ class ClosureModel(models.Model):
         unique_together = (("parent", "child"),)
         indexes = [
             models.Index(fields=["parent", "child"]),
+            models.Index(fields=["parent", "child", "depth"]),
         ]
 
     def __str__(self):

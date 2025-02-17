@@ -9,14 +9,51 @@ Functions:
 - __init__: Initializes the form and filters out invalid parent choices.
 - factory: Dynamically creates a form class for a given TreeNode model.
 
-Version: 2.0.0
+Version: 2.0.10
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
 from django import forms
+import numpy as np
+from django.forms.models import ModelChoiceField, ModelChoiceIterator
+
 from .widgets import TreeWidget
-from django.db.models import Case, When, Value, IntegerField
+
+
+class SortedModelChoiceIterator(ModelChoiceIterator):
+    """Iterator Class for ModelChoiceField."""
+
+    def __iter__(self):
+        """Return sorted choices based on tn_order."""
+        qs_list = list(self.queryset.all())
+        # Sort objects by their tn_order using NumPy.
+        tn_orders = np.array([obj.tn_order for obj in qs_list])
+        sorted_indices = np.argsort(tn_orders)
+        # Iterate over sorted indices and yield (value, label) pairs.
+        for idx in sorted_indices:
+            # Cast the index to int if it is numpy.int64.
+            obj = qs_list[int(idx)]
+            yield (
+                self.field.prepare_value(obj),
+                self.field.label_from_instance(obj)
+            )
+
+
+class SortedModelChoiceField(ModelChoiceField):
+    """ModelChoiceField Class for tn_paret field."""
+
+    def _get_choices(self):
+        """Get sorted choices."""
+        if hasattr(self, '_choices'):
+            return self._choices
+        return SortedModelChoiceIterator(self)
+
+    def _set_choices(self, value):
+        """Set choices."""
+        self._choices = value
+
+    choices = property(_get_choices, _set_choices)
 
 
 class TreeNodeForm(forms.ModelForm):
@@ -40,28 +77,19 @@ class TreeNodeForm(forms.ModelForm):
         """Init Method."""
         super().__init__(*args, **kwargs)
 
-        # Get the model from the form instance
         # Use a model bound to a form
         model = self._meta.model
 
-        # Проверяем наличие tn_parent и исключаем текущий узел и его потомков
         if "tn_parent" in self.fields and self.instance.pk:
-            excluded_ids = [self.instance.pk] + list(
-                self.instance.get_descendants_pks())
-
-            # Sort by tn_order
+            excluded_ids = [self.instance.pk] + \
+                list(self.instance.get_descendants_pks())
             queryset = model.objects.exclude(pk__in=excluded_ids)
-            node_list = sorted(queryset, key=lambda x: x.tn_order)
-            pk_list = [node.pk for node in node_list]
-            queryset = queryset.filter(pk__in=pk_list).order_by(
-                Case(*[When(pk=pk, then=Value(index))
-                       for index, pk in enumerate(pk_list)],
-                     default=Value(len(pk_list)),
-                     output_field=IntegerField())
+            original_field = self.fields["tn_parent"]
+            self.fields["tn_parent"] = SortedModelChoiceField(
+                queryset=queryset,
+                label=self.fields["tn_parent"].label,
+                widget=original_field.widget
             )
-
-            # Set QuerySet
-            self.fields["tn_parent"].queryset = queryset
 
     @classmethod
     def factory(cls, model):
