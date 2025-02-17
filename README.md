@@ -33,7 +33,7 @@ My idea was to solve these problems by combining the adjacency list with the Clo
 * useful functionality added for some methods (e.g.  the `include_self=False` and `depth` parameters has been added to functions that return lists/querysets);
 * additionally, the package includes a tree view widget for the `tn_parent` field in the change form.
 
-Of course, at large levels of nesting, the use of the Closure Table leads to an increase in resource costs. But at the same time, the combined scheme still generally outperforms the original application in terms of performance.
+Of course, at large levels of nesting, the use of the Closure Table leads to an increase in resource costs. However, the combined approach still outperforms both the original application and other available Django solutions in terms of performance, especially in large trees with over 100k nodes.
 
 ## Theory
 You can get a basic understanding of what is a Closure Table from:

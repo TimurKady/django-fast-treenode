@@ -33,7 +33,7 @@ My idea was to solve these problems by combining the adjacency list with the Clo
 * useful functionality added for some methods (e.g.  the `include_self=False` and `depth` parameters has been added to functions that return lists/querysets);
 * additionally, the package includes a tree view widget for the `tn_parent` field in the change form.
 
-Of course, at large levels of nesting, the use of the Closure Table leads to an increase in resource costs. But at the same time, the combined scheme still generally outperforms the original application in terms of performance.
+Of course, at large levels of nesting, the use of the Closure Table leads to an increase in resource costs. However, the combined approach still outperforms both the original application and other available Django solutions in terms of performance, especially in large trees with over 100k nodes.
 
 ## Theory
 You can get a basic understanding of what is a Closure Table from:
@@ -127,37 +127,6 @@ CACHES = {
 class YoursForm(TreeNodeForm):
     # Your code is here
 ```
-
-## Updating to django-fast-treenode 2.X
-### Overview
-If you are upgrading from a previous version, you need to follow these steps to ensure compatibility and proper functionality.
-
-### Update Process
-1. **Upgrade the package**
-   Run the following command to install the latest version:
-
-   ```bash
-   pip install --upgrade django-fast-treenode
-   ```
-
-2. **Apply database migrations**
-   After upgrading, you need to apply the necessary database migrations:
-
-   ```bash
-   python manage.py makemigrations
-   python manage.py migrate
-   ```
-
-3. **Restart the application**
-   Finally, restart your Django application to apply all changes:
-
-   ```bash
-   python manage.py runserver
-   ```
-
-**Important Notes**: Failing to apply migrations (`migrate`) after upgrading may lead to errors when interacting with tree nodes.
-
-By following these steps, you will ensure a smooth transition to the latest version of django-fast-treenode without data inconsistencies.
 
 
 ## Usage
@@ -578,7 +547,7 @@ obj.is_sibling_of(target_obj)
 ```
 
 #### `update_tree`
-**Update tree** manually, useful after **bulk updates**:
+**Update tree** manually:
 ```python
 cls.update_tree()
 ```
@@ -592,8 +561,9 @@ In v2.0, the caching mechanism has been improved to prevent excessive memory usa
 ``` python
 TREENODE_CACHE_LIMIT = 100
 ```
-**Automatic Management**: In most cases, users don’t need to manually manage cache operations.
-**Manual Cache Clearing**:
+**Automatic Management**. In most cases, users don’t need to manually manage cache operations.All methods that somehow change the state of models reset the tree cache automatically.
+
+**Manual Cache Clearing**. If for some reason you need to reset the cache, you can do it in two ways:
 - **Clear cache for a single model**: Use `clear_cache()` at the model level:
     ```python
     MyTreeNodeModel.clear_cache()
@@ -637,6 +607,7 @@ python manage.py migrate
 ```
 This will apply any necessary database changes automatically.
 
+
 ## To do
 These improvements aim to enhance usability, performance, and maintainability for all users of `django-fast-treenode`:
 * **Cache Algorithm Optimization**: Testing and integrating more advanced cache eviction strategies.
@@ -647,6 +618,7 @@ Your wishes, objections, comments are welcome.
 
 
 # Django-fast-treenode
+
 ## License
 Released under [MIT License](https://github.com/TimurKady/django-fast-treenode/blob/main/LICENSE).
 
