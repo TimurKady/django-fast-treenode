@@ -26,6 +26,7 @@ from django.utils.encoding import force_str
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from django.contrib import messages
+from django.shortcuts import resolve_url
 
 from .forms import TreeNodeForm
 from .widgets import TreeWidget
@@ -348,7 +349,11 @@ packages are not installed."
                 f"Successfully imported {created_count} records. "
                 f"Successfully updated {updated_count} records."
             )
-            path = request.path.replace("import/", "") + "?import_done=1"
+
+            app_label = self.model._meta.app_label
+            model_name = self.model._meta.model_name
+            admin_changelist_url = f"admin:{app_label}_{model_name}_changelist"
+            path = resolve_url(admin_changelist_url) + "?import_done=1"
             return redirect(path)
 
         # If the request is not POST, simply display the import form
