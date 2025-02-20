@@ -14,7 +14,7 @@ Features:
 - Uses optimized QuerySets for efficient database queries.
 - Handles validation and error responses gracefully.
 
-Version: 2.0.0
+Version: 2.0.11
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -23,8 +23,9 @@ Email: timurkady@yandex.com
 from django.http import JsonResponse
 from django.views import View
 from django.apps import apps
-from django.db.models import Case, When, Value, IntegerField
+import numpy as np
 from django.core.exceptions import ObjectDoesNotExist
+from django.utils.translation import gettext_lazy as _
 
 
 class TreeNodeAutocompleteView(View):
@@ -50,14 +51,11 @@ class TreeNodeAutocompleteView(View):
             )
 
         queryset = model.objects.filter(name__icontains=q)
-        node_list = sorted(queryset, key=lambda x: x.tn_order)
-        pk_list = [node.pk for node in node_list]
-        nodes = queryset.filter(pk__in=pk_list).order_by(
-            Case(*[When(pk=pk, then=Value(index))
-                   for index, pk in enumerate(pk_list)],
-                 default=Value(len(pk_list)),
-                 output_field=IntegerField())
-        )[:10]
+        # Sorting
+        tn_orders = np.array([obj.tn_order for obj in queryset])
+        sorted_indices = np.argsort(tn_orders)
+        queryset_list = list(queryset.iterator())
+        sorted_queryset = [queryset_list[int(idx)] for idx in sorted_indices]
 
         results = [
             {
@@ -66,8 +64,17 @@ class TreeNodeAutocompleteView(View):
                 "level": node.get_level(),
                 "is_leaf": node.is_leaf(),
             }
-            for node in nodes
+            for node in sorted_queryset
         ]
+
+        root_option = {
+            "id": "",
+            "text": _("Root"),
+            "level": 0,
+            "is_leaf": True,
+        }
+        results.insert(0, root_option)
+
         return JsonResponse({"results": results})
 
 
@@ -93,7 +100,6 @@ class GetChildrenCountView(View):
         try:
             parent_node = model.objects.get(pk=parent_id)
             children_count = parent_node.get_children_count()
-            print("parent_id=", parent_id, " children_count=", children_count)
         except ObjectDoesNotExist:
             return JsonResponse(
                 {"error": "Parent node not found"},

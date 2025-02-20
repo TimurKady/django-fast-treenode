@@ -6,7 +6,7 @@ This module provides Django admin integration for the TreeNode model.
 It includes custom tree-based sorting, optimized queries, and
 import/export functionality for hierarchical data structures.
 
-Version: 2.0.10
+Version: 2.0.11
 Author: Timur Kady
 Email: kaduevtr@gmail.com
 """
@@ -17,6 +17,7 @@ import importlib
 import numpy as np
 from datetime import datetime
 from django.contrib import admin
+from django.http import HttpResponseRedirect
 from django.contrib.admin.views.main import ChangeList
 from django.db import models
 from django.shortcuts import render, redirect
@@ -24,6 +25,7 @@ from django.urls import path
 from django.utils.encoding import force_str
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
+from django.contrib import messages
 
 from .forms import TreeNodeForm
 from .widgets import TreeWidget
@@ -63,7 +65,9 @@ class SortedChangeList(ChangeList):
         tn_orders = np.array([obj.tn_order for obj in result_list])
         # Get sorted indices based on tn_order (ascending order).
         # Reorder the original result_list based on the sorted indices.
-        self.result_list = [result_list[int(i)] for i in np.argsort(tn_orders)]
+        self.result_list = [
+            result_list[int(i)] for i in np.argsort(tn_orders)
+        ]
 
 
 class TreeNodeAdminModel(admin.ModelAdmin):
@@ -101,7 +105,7 @@ class TreeNodeAdminModel(admin.ModelAdmin):
         )
 
     def __init__(self, model, admin_site):
-        """Динамически добавляем поле `tn_order` в `list_display`."""
+        """Init method."""
         super().__init__(model, admin_site)
 
         # If `list_display` is empty, take all `fields`
@@ -115,7 +119,8 @@ class TreeNodeAdminModel(admin.ModelAdmin):
         ])
         if not self.import_export:
             check_results = [
-                pkg for pkg in ["openpyxl", "pyyaml", "xlsxwriter"] if importlib.util.find_spec(pkg) is not None
+                pkg for pkg in ["openpyxl", "pyyaml", "xlsxwriter"]
+                if importlib.util.find_spec(pkg) is not None
             ]
             logger.info("Packages" + ", ".join(check_results) + " are \
 not installed. Export and import functions are disabled.")
@@ -178,7 +183,32 @@ not installed. Export and import functions are disabled.")
         """Changelist View."""
         extra_context = extra_context or {}
         extra_context['import_export_enabled'] = self.import_export
-        return super().changelist_view(request, extra_context=extra_context)
+
+        response = super().changelist_view(request, extra_context=extra_context)
+
+        # Если response — это редирект, то нет смысла обновлять ChangeList
+        if isinstance(response, HttpResponseRedirect):
+            return response
+
+        if request.GET.get("import_done"):
+            # Создаём экземпляр ChangeList вручную
+            ChangeListClass = self.get_changelist(request)
+
+            cl = ChangeListClass(
+                request, self.model, self.list_display, self.list_display_links,
+                self.list_filter, self.date_hierarchy, self.search_fields,
+                self.list_select_related, self.list_per_page,
+                self.list_max_show_all, self.list_editable, self
+            )
+
+            # Принудительно обновляем queryset и применяем сортировку
+            cl.get_queryset(request)
+            cl.get_results(request)
+
+            # Добавляем обновлённый ChangeList в контекст
+            response.context_data["cl"] = cl
+
+        return response
 
     def get_ordering(self, request):
         """Get Ordering."""
@@ -294,19 +324,32 @@ packages are not installed."
             # Import data from file
             importer = self.TreeNodeImporter(self.model, file, ext)
             raw_data = importer.import_data()
-            clean_result = importer.clean(raw_data)
-            errors = importer.finalize_import(clean_result)
+            clean_result = importer.finalize(raw_data)
+
+            errors = clean_result.get("errors", [])
+            created_count = len(clean_result.get("create", []))
+            updated_count = len(clean_result.get("update", []))
+
             if errors:
                 return render(
                     request,
-                    "admin/tree_node_import.html",
-                    {"errors": errors}
+                    "admin/tree_node_import_report.html",
+                    {
+                        "errors": errors,
+                        "created_count": created_count,
+                        "updated_count": updated_count,
+                    }
                 )
-            self.message_user(
+
+            # If there are no errors, redirect to the list of objects with
+            # a message
+            messages.success(
                 request,
-                f"Successfully imported {len(clean_result['create'])} records."
+                f"Successfully imported {created_count} records. "
+                f"Successfully updated {updated_count} records."
             )
-            return redirect("..")
+            path = request.path.replace("import/", "") + "?import_done=1"
+            return redirect(path)
 
         # If the request is not POST, simply display the import form
         return render(request, "admin/tree_node_import.html")
@@ -341,7 +384,7 @@ packages are not installed."
             filename = self.model._meta.label + " " + now
             # Init
             exporter = self.TreeNodeExporter(
-                self.get_queryset(),
+                self.get_queryset(request),
                 filename=filename
             )
             # Export working

@@ -12,7 +12,7 @@ Features:
 - Uses bulk operations for efficient data insertion and updates.
 - Supports transactional imports to maintain data integrity.
 
-Version: 2.0.0
+Version: 2.0.11
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -23,8 +23,9 @@ import json
 import yaml
 import openpyxl
 import math
+import uuid
 from io import BytesIO, StringIO
-from django.db import transaction
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -73,9 +74,225 @@ class TreeNodeImporter:
             raise ValueError("Unsupported import format")
 
         raw_data = importers[self.format]()
+
         # Processing: field filtering, complex value packing and type casting
-        processed_data = self.process_records(raw_data)
-        return processed_data
+        processed = []
+        for record in raw_data:
+            filtered = self.filter_fields(record)
+            filtered = self.process_complex_fields(filtered)
+            filtered = self.cast_record_types(filtered)
+            processed.append(filtered)
+
+        return processed
+
+    def get_tn_orders(self, rows):
+        """Calculate the materialized path without including None parents."""
+        # Build a mapping from id to record for quick lookup.
+        row_dict = {row["id"]: row for row in rows}
+
+        def get_ancestor_path(row):
+            parent_field = 'tn_parent' if 'tn_parent' in row else 'tn_parent_id'
+            return get_ancestor_path(row_dict[row[parent_field]]) + [row["id"]] if row[parent_field] else [row["id"]]
+
+        return [
+            {"id": row["id"], "path": get_ancestor_path(row)}
+            for row in rows
+        ]
+
+    def filter_fields(self, record):
+        """
+        Filter the record according to the mapping.
+
+        Only the necessary keys remain, while the names are renamed.
+        """
+        new_record = {}
+        for file_key, model_field in self.mapping.items():
+            new_record[model_field] = record.get(file_key)
+        return new_record
+
+    def process_complex_fields(self, record):
+        """
+        Pack it into a JSON string.
+
+        If the field value is a dictionary or list.
+        """
+        for key, value in record.items():
+            if isinstance(value, uuid.UUID):
+                record[key] = str(value)
+            if isinstance(value, (list, dict)):
+                try:
+                    record[key] = json.dumps(value, ensure_ascii=False)
+                except Exception as e:
+                    logger.warning("Error serializing field %s: %s", key, e)
+                    record[key] = None
+        return record
+
+    def cast_record_types(self, record):
+        """
+        Cast the values ​​of the record fields to the types defined in the model.
+
+        For each field, its to_python() method is called. If the value is nan,
+        it is replaced with None.
+        For ForeignKey fields (many-to-one), the value is written to
+        the <field>_id attribute, and the original key is removed.
+        """
+        for field in self.model._meta.fields:
+            field_name = field.name
+            if field.is_relation and field.many_to_one:
+                if field_name in record:
+                    value = record[field_name]
+                    if isinstance(value, float) and math.isnan(value):
+                        value = None
+                    try:
+                        converted = None if value is None else int(value)
+                        # Записываем в атрибут, например, tn_parent_id
+                        record[field.attname] = converted
+                    except Exception as e:
+                        logger.warning(
+                            "Error converting FK field %s with value %r: %s",
+                            field_name,
+                            value,
+                            e
+                        )
+                        record[field.attname] = None
+                    # Удаляем оригинальное значение, чтобы Django не пыталась
+                    # его обработать
+                    del record[field_name]
+            else:
+                if field_name in record:
+                    value = record[field_name]
+                    if isinstance(value, float) and math.isnan(value):
+                        record[field_name] = None
+                    else:
+                        try:
+                            record[field_name] = field.to_python(value)
+                        except Exception as e:
+                            logger.warning(
+                                "Error converting field %s with value %r: %s",
+                                field_name,
+                                value,
+                                e
+                            )
+                            record[field_name] = None
+        return record
+
+    # ------------------------------------------------------------------------
+
+    def finalize(self, raw_data):
+        """
+        Finalize import.
+
+        Processes raw_data, creating and updating objects by levels
+        (from roots to leaves) using the materialized path to calculate
+        the level.
+
+        Algorithm:
+        1. Build a raw_by_id dictionary for quick access to records by id.
+        2. For each record, calculate the materialized path:
+        - If tn_parent is specified and exists in raw_data, recursively get
+          the parent's path and add its id.
+        - If tn_parent is missing from raw_data, check if the parent is in
+          the database.
+        If not, generate an error.
+        3. Record level = length of its materialized path.
+        4. Split records into those that need to be created (if the object
+           with the given id is not yet in the database), and those that need
+           to be updated.
+        5. To create, process groups by levels (sort by increasing level):
+        - Validate each record, if there are no errors, add the instance to
+          the list.
+        - After each level, we perform bulk_create.
+        6. For updates, we collect instances, fixing fields (without id)
+           and perform bulk_update.
+
+        Returns a dictionary:
+          {
+             "create": [созданные объекты],
+             "update": [обновлённые объекты],
+             "errors": [список ошибок]
+          }
+        """
+        result = {
+            "create": [],
+            "update": [],
+            "errors": []
+        }
+
+        # 1. Calculate the materialized path and level for each entry.
+        paths = self.get_tn_orders(raw_data)
+        # key: record id, value: уровень (int)
+        levels_by_record = {rec["id"]: len(rec["path"])-1 for rec in paths}
+
+        # 2. Разбиваем записи по уровням
+        levels = {}
+        for record in raw_data:
+            level = levels_by_record.get(record["id"], 0)
+            if level not in levels:
+                levels[level] = []
+            levels[level].append(record)
+
+        records_by_level = [
+            sorted(
+                levels[key],
+                key=lambda x: (x.get(
+                    "tn_parent",
+                    x.get("tn_parent_id", 0)) or -1)
+            )
+            for key in sorted(levels.keys())
+        ]
+
+        # 4. We split the records into those to create and those to update.
+        # The list of records to update
+        to_update = []
+
+        for level in range(len(records_by_level)):
+            instances_to_create = []
+            for record in records_by_level[level]:
+                rec_id = record["id"]
+                if self.model.objects.filter(pk=rec_id).exists():
+                    to_update.append(record)
+                else:
+                    instance = self.model(**record)
+                    try:
+                        instance.full_clean()
+                        instances_to_create.append(instance)
+                    except Exception as e:
+                        result["errors"].append(f"Validation error for record \
+{record['id']} on level {level}: {e}")
+            try:
+                created = self.model.objects.bulk_create(instances_to_create)
+                result["create"].extend(created)
+            except Exception as e:
+                result["errors"].append(f"Create error on level {level}: {e}")
+
+        # 6. Processing updates: collecting instances and a list of fields
+        # for bulk_update
+        updated_instances = []
+        update_fields_set = set()
+        for record in to_update:
+            rec_id = record["id"]
+            try:
+                instance = self.model.objects.get(pk=rec_id)
+                for field, value in record.items():
+                    if field != "id":
+                        setattr(instance, field, value)
+                        update_fields_set.add(field)
+                instance.full_clean()
+                updated_instances.append(instance)
+            except Exception as e:
+                result["errors"].append(
+                    f"Validation error updating record {rec_id}: {e}")
+        update_fields = list(update_fields_set)
+        if updated_instances:
+            try:
+                self.model.objects.bulk_update(updated_instances, update_fields)
+                result["update"].extend(updated_instances)
+            except Exception as e:
+                result["errors"].append(f"Bulk update error: {e}")
+
+        return result
+
+    # ------------------------------------------------------------------------
 
     def from_csv(self):
         """Import from CSV."""
@@ -108,214 +325,5 @@ class TreeNodeImporter:
         text = self.get_text_content()
         return list(csv.DictReader(StringIO(text), delimiter="\t"))
 
-    def filter_fields(self, record):
-        """
-        Filter the record according to the mapping.
-
-        Only the necessary keys remain, while the names are renamed.
-        """
-        new_record = {}
-        for file_key, model_field in self.mapping.items():
-            new_record[model_field] = record.get(file_key)
-        return new_record
-
-    def process_complex_fields(self, record):
-        """
-        Pack it into a JSON string.
-
-        If the field value is a dictionary or list.
-        """
-        for key, value in record.items():
-            if isinstance(value, (list, dict)):
-                try:
-                    record[key] = json.dumps(value, ensure_ascii=False)
-                except Exception as e:
-                    logger.warning("Error serializing field %s: %s", key, e)
-                    record[key] = None
-        return record
-
-    def cast_record_types(self, record):
-        """
-        Casts the values ​​of the record fields to the types defined in the model.
-
-        For each field, its to_python() method is called. If the value is nan,
-        it is replaced with None.
-        For ForeignKey fields (many-to-one), the value is written to 
-        the <field>_id attribute, and the original key is removed.
-        """
-        for field in self.model._meta.fields:
-            field_name = field.name
-            if field.is_relation and field.many_to_one:
-                if field_name in record:
-                    value = record[field_name]
-                    if isinstance(value, float) and math.isnan(value):
-                        value = None
-                    try:
-                        converted = None if value is None else int(value)
-                        # Записываем в атрибут, например, tn_parent_id
-                        record[field.attname] = converted
-                    except Exception as e:
-                        logger.warning("Error converting FK field %s with value %r: %s",
-                                       field_name, value, e)
-                        record[field.attname] = None
-                    # Удаляем оригинальное значение, чтобы Django не пыталась его обработать
-                    del record[field_name]
-            else:
-                if field_name in record:
-                    value = record[field_name]
-                    if isinstance(value, float) and math.isnan(value):
-                        record[field_name] = None
-                    else:
-                        try:
-                            record[field_name] = field.to_python(value)
-                        except Exception as e:
-                            logger.warning("Error converting field %s with value %r: %s",
-                                           field_name, value, e)
-                            record[field_name] = None
-        return record
-
-    def process_records(self, records):
-        """
-        Process a list of records.
-
-        1. Filters fields by mapping.
-        2. Packs complex (nested) data into JSON.
-        3. Converts the values ​​of each field to the types defined in the model.
-        """
-        processed = []
-        for record in records:
-            filtered = self.filter_fields(record)
-            filtered = self.process_complex_fields(filtered)
-            filtered = self.cast_record_types(filtered)
-            processed.append(filtered)
-        return processed
-
-    def clean(self, raw_data):
-        """
-        Validat and prepare data for bulk saving of objects.
-
-        For each record:
-        - The presence of a unique field 'id' is checked.
-        - The value of the parent relationship (tn_parent or tn_parent_id)
-          is saved separately and removed from the data.
-        - Casts the data to model types.
-        - Attempts to create a model instance with validation via full_clean().
-
-        Returns a dictionary with the following keys:
-        'create' - a list of objects to create,
-        'update' - a list of objects to update (in this case, we leave 
-        it empty),
-        'update_fields' - a list of fields to update (for example, 
-        ['tn_parent']),
-        'fk_mappings' - a dictionary of {object_id: parent key value from 
-        the source data},
-        'errors' - a list of validation errors.
-        """
-        result = {
-            "create": [],
-            "update": [],
-            "update_fields": [],
-            "fk_mappings": {},
-            "errors": []
-        }
-
-        for data in raw_data:
-            if 'id' not in data:
-                error_message = f"Missing unique field 'id' in record: {data}"
-                result["errors"].append(error_message)
-                logger.warning(error_message)
-                continue
-
-            # Save the parent relationship value and remove it from the data
-            fk_value = None
-            if 'tn_parent' in data:
-                fk_value = data['tn_parent']
-                del data['tn_parent']
-            elif 'tn_parent_id' in data:
-                fk_value = data['tn_parent_id']
-                del data['tn_parent_id']
-
-            # Convert values ​​to model types
-            data = self.cast_record_types(data)
-
-            try:
-                instance = self.model(**data)
-                instance.full_clean()
-                result["create"].append(instance)
-                # Save the parent key value for future update
-                result["fk_mappings"][instance.id] = fk_value
-            except Exception as e:
-                error_message = f"Validation error creating {data}: {e}"
-                result["errors"].append(error_message)
-                logger.warning(error_message)
-                continue
-
-        # In this scenario, the update occurs only for the parent relationship
-        result["update_fields"] = ['tn_parent']
-        return result
-
-    def save_data(self, create, update, fields):
-        """
-        Save objects to the database as part of an atomic transaction.
-
-        :param create: list of objects to create.
-        :param update: list of objects to update.
-        :param fields: list of fields to update (for bulk_update).
-        """
-        with transaction.atomic():
-            if update:
-                self.model.objects.bulk_update(update, fields, batch_size=1000)
-            if create:
-                self.model.objects.bulk_create(create, batch_size=1000)
-
-    def update_parent_relations(self, fk_mappings):
-        """
-        Update the tn_parent field for objects using the saved fk_mappings.
-
-        :param fk_mappings: dictionary {object_id: parent key value from 
-        the source data}
-        """
-        instances_to_update = []
-        for obj_id, parent_id in fk_mappings.items():
-            # If parent is not specified, skip
-            if not parent_id:
-                continue
-            try:
-                instance = self.model.objects.get(pk=obj_id)
-                parent_instance = self.model.objects.get(pk=parent_id)
-                instance.tn_parent = parent_instance
-                instances_to_update.append(instance)
-            except self.model.DoesNotExist:
-                logger.warning(
-                    "Parent with id %s not found for instance %s",
-                    parent_id,
-                    obj_id
-                )
-        if instances_to_update:
-            update_fields = ['tn_parent']
-            self.model.objects.bulk_update(
-                instances_to_update, update_fields, batch_size=1000)
-
-        # If you want to combine the save and update parent operations,
-        # you can add a method that calls save_data and update_parent_relations
-        # sequentially.
-
-    def finalize_import(self, clean_result):
-        """
-        Finalize the import: saves new objects and updates parent links.
-
-        :param clean_result: dictionary returned by the clean method.
-        """
-        # If there are errors, you can interrupt the import or return them
-        # for processing
-        if clean_result["errors"]:
-            return clean_result["errors"]
-
-        # First we do a bulk creation
-        self.save_data(
-            clean_result["create"], clean_result["update"], clean_result["update_fields"])
-        # Then we update the parent links
-        self.update_parent_relations(clean_result["fk_mappings"])
-        return None  # Or return a success message
 
 # The End

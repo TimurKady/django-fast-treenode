@@ -12,7 +12,7 @@ Features:
 - Provides optimized data extraction for QuerySets.
 - Generates downloadable files with appropriate HTTP responses.
 
-Version: 2.0.10
+Version: 2.0.11
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -23,6 +23,7 @@ import json
 import yaml
 import xlsxwriter
 import numpy as np
+import uuid
 from io import BytesIO
 from django.http import HttpResponse
 import logging
@@ -43,6 +44,7 @@ class TreeNodeExporter:
         self.queryset = queryset
         self.filename = filename
         self.fields = [field.name for field in queryset.model._meta.fields]
+        self.fields = self.get_ordered_fields()
 
     def export(self, format):
         """Determine the export format and calls the corresponding method."""
@@ -60,7 +62,9 @@ class TreeNodeExporter:
     def process_complex_fields(self, record):
         """Convert complex fields (lists, dictionaries) into JSON strings."""
         for key, value in record.items():
-            if isinstance(value, (list, dict)):
+            if isinstance(value, uuid.UUID):
+                record[key] = str(value)
+            elif isinstance(value, (list, dict)):
                 try:
                     record[key] = json.dumps(value, ensure_ascii=False)
                 except Exception as e:
@@ -68,11 +72,24 @@ class TreeNodeExporter:
                     record[key] = None
         return record
 
+    def get_ordered_fields(self):
+        """Return fields in the desired order.
+
+        Order: id, tn_parent, tn_priority, then the rest.
+        """
+        required_fields = ["id", "tn_parent", "tn_priority"]
+        other_fields = [
+            field for field in self.fields if field not in required_fields]
+        return required_fields + other_fields
+
     def get_sorted_queryset(self):
-        """Sort queryset by tn_order."""
-        queryset_list = list(self.queryset)
-        tn_orders = np.array([obj.tn_order for obj in queryset_list])
-        return [queryset_list[int(i)] for i in np.argsort(tn_orders)]
+        """Quick sort queryset by tn_order."""
+        queryset = self.queryset
+        tn_orders = np.array([obj.tn_order for obj in queryset])
+        sorted_indices = np.argsort(tn_orders)
+        queryset_list = list(queryset.iterator())
+        result = [queryset_list[int(idx)] for idx in sorted_indices]
+        return result
 
     def get_data(self):
         """Return a list of data from QuerySet as dictionaries."""
@@ -100,70 +117,78 @@ class TreeNodeExporter:
         return data
 
     def to_csv(self):
-        """Export to CSV with proper attachment handling."""
-        response = HttpResponse(content_type="text/csv")
+        """Export to CSV with proper UTF-8 encoding."""
+        response = HttpResponse(content_type="text/csv; charset=utf-8")
         response["Content-Disposition"] = f'attachment; filename="{self.filename}.csv"'
+        response.write("\ufeff")  # Добавляем BOM для Excel
+
         writer = csv.DictWriter(response, fieldnames=self.fields)
         writer.writeheader()
-        writer.writerows(self.get_data())
+        for row in self.get_data():
+            writer.writerow({key: str(value)
+                            for key, value in row.items()})  # Приводим к строкам
+
         return response
 
     def to_json(self):
-        """Export to JSON with UUID serialization handling."""
-        response = HttpResponse(content_type="application/octet-stream")
+        """Export to JSON with proper UTF-8 encoding."""
+        response = HttpResponse(content_type="application/json; charset=utf-8")
         response["Content-Disposition"] = f'attachment; filename="{self.filename}.json"'
-        json.dump(
-            self.get_data(),
-            response,
-            ensure_ascii=False,
-            indent=4,
-            default=str
-        )
+        json_str = json.dumps(self.get_data(), ensure_ascii=False, indent=4)
+        response.write(json_str)
         return response
 
     def to_xlsx(self):
-        """Export to XLSX."""
+        """Export to XLSX with UTF-8 encoding."""
         response = HttpResponse(
             content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         response["Content-Disposition"] = f'attachment; filename="{self.filename}.xlsx"'
 
-        data = self.get_data()
         output = BytesIO()
         workbook = xlsxwriter.Workbook(output)
         worksheet = workbook.add_worksheet()
 
-        # Записываем заголовки
-        headers = list(data[0].keys()) if data else []
+        # Заголовки
+        headers = list(self.fields)
         for col_num, header in enumerate(headers):
             worksheet.write(0, col_num, header)
 
-        # Записываем строки данных
-        for row_num, row in enumerate(data, start=1):
+        # Данные
+        for row_num, row in enumerate(self.get_data(), start=1):
             for col_num, key in enumerate(headers):
-                worksheet.write(row_num, col_num, row[key])
+                worksheet.write(
+                    row_num,
+                    col_num,
+                    str(row[key]) if row[key] is not None else ""
+                )
 
         workbook.close()
         output.seek(0)
-        return response.write(output.read())
+        response.write(output.read())
+        return response
 
     def to_yaml(self):
-        """Export to YAML with proper attachment handling."""
-        response = HttpResponse(content_type="application/octet-stream")
+        """Export to YAML with proper UTF-8 encoding."""
+        response = HttpResponse(
+            content_type="application/x-yaml; charset=utf-8")
         response["Content-Disposition"] = f'attachment; filename="{self.filename}.yaml"'
-        yaml_str = yaml.dump(self.get_data(), allow_unicode=True)
+        yaml_str = yaml.dump(
+            self.get_data(), allow_unicode=True, default_flow_style=False)
         response.write(yaml_str)
         return response
 
     def to_tsv(self):
-        """Export to TSV with proper attachment handling."""
-        response = HttpResponse(content_type="application/octet-stream")
+        """Export to TSV with UTF-8 encoding."""
+        response = HttpResponse(
+            content_type="text/tab-separated-values; charset=utf-8")
         response["Content-Disposition"] = f'attachment; filename="{self.filename}.tsv"'
+        response.write("\ufeff")  # Добавляем BOM
+
         writer = csv.DictWriter(
-            response,
-            fieldnames=self.fields,
-            delimiter="	"
-        )
+            response, fieldnames=self.fields, delimiter="\t")
         writer.writeheader()
-        writer.writerows(self.get_data())
+        for row in self.get_data():
+            writer.writerow({key: str(value) for key, value in row.items()})
+
         return response

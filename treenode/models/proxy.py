@@ -13,7 +13,7 @@ Features:
 - Provides a caching mechanism for performance optimization.
 - Includes methods for tree traversal, manipulation, and serialization.
 
-Version: 2.0.0
+Version: 2.0.11
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -131,14 +131,14 @@ class TreeNodeModel(models.Model, metaclass=TreeFactory):
 
     def get_ancestors_queryset(self, include_self=True, depth=None):
         """Get the ancestors queryset (ordered from parent to root)."""
-        return self.closure_model.get_ancestors_queryset(
-            self, include_self, depth)
+        ancestors_pks = self.get_ancestors_pks(include_self, depth)
+        result = self._meta.model.objects.filter(pk__in=ancestors_pks)
+        return result
 
     def get_ancestors(self, include_self=True, depth=None):
         """Get a list with all ancestors (ordered from root to self/parent)."""
-        return list(
-            self.get_ancestors_queryset(include_self, depth).iterator()
-        )
+        queryset = self.get_ancestors_queryset(include_self, depth)
+        return list(queryset.iterator())
 
     def get_ancestors_count(self, include_self=True, depth=None):
         """Get the ancestors count."""
@@ -146,8 +146,8 @@ class TreeNodeModel(models.Model, metaclass=TreeFactory):
 
     def get_ancestors_pks(self, include_self=True, depth=None):
         """Get the ancestors pks list."""
-        qs = self.get_ancestors_queryset(include_self, depth).only('pk')
-        return [ch.pk for ch in qs] if qs else []
+        pks = self.closure_model.get_ancestors_pks(self, include_self, depth)
+        return pks
 
     # Children --------------------
 
@@ -172,15 +172,14 @@ class TreeNodeModel(models.Model, metaclass=TreeFactory):
 
     def get_descendants_queryset(self, include_self=False, depth=None):
         """Get the descendants queryset."""
-        return self.closure_model.get_descendants_queryset(
-            self, include_self, depth
-        )
+        descendants_pks = self.get_descendants_pks(include_self, depth)
+        result = self._meta.model.objects.filter(pk__in=descendants_pks)
+        return result
 
     def get_descendants(self, include_self=False, depth=None):
         """Get a list containing all descendants."""
-        return list(
-            self.get_descendants_queryset(include_self, depth).iterator()
-        )
+        queryset = self.get_descendants_queryset(include_self, depth).iterator()
+        return list(queryset)
 
     def get_descendants_count(self, include_self=False, depth=None):
         """Get the descendants count."""
@@ -188,8 +187,8 @@ class TreeNodeModel(models.Model, metaclass=TreeFactory):
 
     def get_descendants_pks(self, include_self=False, depth=None):
         """Get the descendants pks list."""
-        qs = self.get_descendants_queryset(include_self, depth)
-        return [ch.pk for ch in qs] if qs else []
+        pks = self.closure_model.get_descendants_pks(self, include_self, depth)
+        return pks
 
     # Siblings --------------------
 
@@ -216,9 +215,16 @@ class TreeNodeModel(models.Model, metaclass=TreeFactory):
 
     # -----------------------------
 
-    def get_breadcrumbs(self, attr=None):
+    def get_breadcrumbs(self, attr='pk'):
         """Get the breadcrumbs to current node (self, included)."""
-        return self.closure_model.get_breadcrumbs(self, attr)
+        queryset = self.get_ancestors_queryset(include_self=True)
+
+        breadcrumbs = [
+            getattr(item, attr)
+            if hasattr(item, attr) else None
+            for item in queryset
+        ]
+        return breadcrumbs
 
     def get_depth(self):
         """Get the node depth (self, how many levels of descendants)."""
@@ -238,7 +244,7 @@ class TreeNodeModel(models.Model, metaclass=TreeFactory):
 
     def get_order(self):
         """Return the materialized path."""
-        path = self.closure_model.get_breadcrumbs(self, attr='tn_priority')
+        path = self.get_breadcrumbs(attr='tn_priority')
         segments = [to_base36(i).rjust(6, '0') for i in path]
         return ''.join(segments)
 
@@ -252,8 +258,18 @@ class TreeNodeModel(models.Model, metaclass=TreeFactory):
 
     def get_path(self, prefix='', suffix='', delimiter='.', format_str=''):
         """Return Materialized Path of node."""
-        path = self.closure_model.get_path(self, delimiter, format_str)
-        return prefix+path+suffix
+        priorities = self.get_breadcrumbs(attr='tn_priority')
+        # Проверяем, что список не пуст
+        if not priorities or all(p is None for p in priorities):
+            return prefix + suffix
+
+        str_ = "{%s}" % format_str
+        path = delimiter.join([
+            str_.format(p)
+            for p in priorities
+            if p is not None
+        ])
+        return prefix + path + suffix
 
     @cached_method
     def get_parent(self):
@@ -369,7 +385,9 @@ class TreeNodeModel(models.Model, metaclass=TreeFactory):
 
         # --- 2. Check mode _-------------------------------------------------
         # If the object already exists in the DB, we'll extract its old parent
-        if not is_new:
+        if is_new:
+            force_insert = True
+        else:
             ql = model.objects.filter(pk=self.pk).values_list(
                 'tn_parent',
                 'tn_priority').first()
@@ -395,7 +413,8 @@ class TreeNodeModel(models.Model, metaclass=TreeFactory):
 
         # If the parent has changed, we move it
         if (old_parent != self.tn_parent):
-            closure_model.move_node(self)
+            subtree_nodes = self.get_descendants(include_self=True)
+            self.closure_model.move_node(subtree_nodes)
 
         # --- 5. Update siblings ---------------------------------------------
         if is_new or is_move:
@@ -582,7 +601,7 @@ class TreeNodeModel(models.Model, metaclass=TreeFactory):
         # Save changes
         model = self._meta.model
         with transaction.atomic():
-            model.objects.bulk_update(sorted_siblings, ('tn_priority',), 1000)
+            model.objects.bulk_update(sorted_siblings, ('tn_priority',))
         super().save(update_fields=['tn_priority'])
         model.clear_cache()
 

@@ -11,7 +11,7 @@ Features:
 - Implements cached queries for improved performance.
 - Provides bulk operations for inserting, moving, and deleting nodes.
 
-Version: 2.0.1
+Version: 2.0.11
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -69,46 +69,30 @@ class ClosureModel(models.Model):
 
     @classmethod
     @cached_method
-    def get_ancestors_queryset(cls, node, include_self=True, depth=None):
-        """Get the ancestors QuerySet (ordered from root to parent)."""
-        filters = {"child__pk": node.pk}
-        if depth is not None:
-            filters["depth__lte"] = depth
-        qs = cls.objects.all().filter(**filters)
-        if not include_self:
-            qs = qs.exclude(parent=node, child=node)
-        return qs
+    def get_ancestors_pks(cls, node, include_self=True, depth=None):
+        """Get the ancestors pks list."""
+        options = dict(child_id=node.pk, depth__gte=0 if include_self else 1)
+        if depth:
+            options["depth__lte"] = depth
+        queryset = cls.objects.filter(**options).order_by('depth')
+        return list(queryset.values_list("parent_id", flat=True))
 
     @classmethod
     @cached_method
-    def get_breadcrumbs(cls, node, attr=None):
-        """Get the breadcrumbs to current node (included)."""
-        qs = cls.get_ancestors_queryset(
-            node, include_self=True).order_by('-depth')
-        if attr:
-            return [getattr(item.parent, attr)
-                    if hasattr(item.parent, attr) else None for item in qs]
-        else:
-            return [item.parent.pk for item in qs]
-
-    @classmethod
-    @cached_method
-    def get_descendants_queryset(cls, node, include_self=False, depth=None):
-        """Get the descendants QuerySet (ordered from parent to leaf)."""
-        filters = {"parent__pk": node.pk}
-        if depth is not None:
-            filters["depth__lte"] = depth
-        qs = cls.objects.all().filter(**filters).select_related('parent')
-        if not include_self:
-            qs = qs.exclude(parent=node, child=node)
-        return qs
+    def get_descendants_pks(cls, node, include_self=False, depth=None):
+        """Get a list containing all descendants."""
+        options = dict(parent_id=node.pk, depth__gte=0 if include_self else 1)
+        if depth:
+            options.update({'depth__lte': depth})
+        queryset = cls.objects.filter(**options)
+        return list(queryset.values_list("child_id", flat=True))
 
     @classmethod
     @cached_method
     def get_root(cls, node):
-        """Get the root node for the given node."""
-        return cls.objects.filter(child=node).values_list(
-            "parent", flat=True).order_by('-depth').first()
+        """Get the root node pk for the current node."""
+        queryset = cls.objects.filter(child=node).order_by('-depth')
+        return queryset.firts().parent if queryset.count() > 0 else None
 
     @classmethod
     @cached_method
@@ -127,15 +111,6 @@ class ClosureModel(models.Model):
             models.Max("depth"))["depth__max"] + 1
 
     @classmethod
-    @cached_method
-    def get_path(cls, node, delimiter='.', format_str=""):
-        """Return Materialized Path of node."""
-        str_ = "{%s}" % format_str
-        priorities = cls.get_breadcrumbs(node, attr='tn_priority')
-        path = delimiter.join([str_.format(p) for p in priorities])
-        return path
-
-    @classmethod
     @transaction.atomic
     def insert_node(cls, node):
         """Add a node to a Closure table."""
@@ -146,10 +121,10 @@ class ClosureModel(models.Model):
 
     @classmethod
     @transaction.atomic
-    def move_node(cls, node):
-        """Move a node (and its subtree) to a new parent."""
+    def move_node(cls, nodes):
+        """Move a nodes (node and its subtree) to a new parent."""
         # Call bulk_update passing a single object
-        cls.objects.bulk_update([node], batch_size=1000)
+        cls.objects.bulk_update(nodes, batch_size=1000)
         # Clear cache
         cls.clear_cache()
 

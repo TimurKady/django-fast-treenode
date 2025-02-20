@@ -11,13 +11,15 @@ Features:
 - `TreeNodeQuerySet` and `TreeNodeModelManager` for adjacency model operations.
 - Optimized `bulk_create` and `bulk_update` methods with atomic transactions.
 
-Version: 2.0.0
+Version: 2.0.11
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
-
+from collections import deque, defaultdict
 from django.db import models, transaction
+from django.db.models import F
+from django.db import connection
 
 
 # ----------------------------------------------------------------------------
@@ -28,173 +30,237 @@ from django.db import models, transaction
 class ClosureQuerySet(models.QuerySet):
     """QuerySet для ClosureModel."""
 
-    @transaction.atomic
-    def bulk_create(self, objs, batch_size=1000):
+    def sort_nodes(self, node_list):
         """
-        Insert new nodes in bulk.
+        Sort nodes topologically.
 
-        For newly created AdjacencyModel objects:
-        1. Create self-referential records (parent=child, depth=0).
-        2. Build ancestors for each node based on tn_parent.
+        Возвращает список узлов, отсортированных от корней к листьям.
+        Узел считается корневым, если его tn_parent равен None или его
+        родитель отсутствует в node_list.
         """
-        # --- 1. Create self-referential closure records for each object.
-        self_closure_records = []
-        for item in objs:
-            self_closure_records.append(
-                self.model(parent=item, child=item, depth=0)
-            )
-        super().bulk_create(self_closure_records, batch_size=batch_size)
-
-        # --- 2. Preparing closure for parents
-        parent_ids = {node.tn_parent.pk for node in objs if node.tn_parent}
-        parent_closures = list(
-            self.filter(child__in=parent_ids)
-                .values('child', 'parent', 'depth')
-        )
-        # Pack them into a dict
-        parent_closures_dict = {}
-        for pc in parent_closures:
-            parent_id = pc['child']
-            parent_closures_dict.setdefault(parent_id, []).append(pc)
-
-        # --- 3. Get closure records for the objs themselves
-        node_ids = [node.pk for node in objs]
-        child_closures = list(
-            self.filter(parent__in=node_ids)
-                .values('parent', 'child', 'depth')
-        )
-        child_closures_dict = {}
-        for cc in child_closures:
-            parent_id = cc['parent']
-            child_closures_dict.setdefault(parent_id, []).append(cc)
-
-        # --- 4. Collecting new links
-        new_records = []
-        for node in objs:
-            if not node.tn_parent:
-                continue
-            # parent closure
-            parents = parent_closures_dict.get(node.tn_parent.pk, [])
-            # closure of descendants
-            # (often this is only the node itself, depth=0, but there can be
-            # nested ones)
-            children = child_closures_dict.get(node.pk, [])
-            # Combine parents x children
-            for p in parents:
-                for c in children:
-                    new_records.append(self.model(
-                        parent_id=p['parent'],
-                        child_id=c['child'],
-                        depth=p['depth'] + c['depth'] + 1
-                    ))
-        # --- 5. bulk_create
+        visited = set()  # будем хранить id уже обработанных узлов
         result = []
-        if new_records:
-            result = super().bulk_create(new_records, batch_size=batch_size)
+        # Множество id узлов, входящих в исходный список
+        node_ids = {node.id for node in node_list}
+
+        def dfs(node):
+            if node.id in visited:
+                return
+            # Если родитель есть и он входит в node_list – обрабатываем его
+            # первым
+            if node.tn_parent and node.tn_parent_id in node_ids:
+                dfs(node.tn_parent)
+            visited.add(node.id)
+            result.append(node)
+
+        for n in node_list:
+            dfs(n)
+
+        return result
+
+    @transaction.atomic
+    def bulk_create(self, objs, batch_size=1000, *args, **kwargs):
+        """Insert new nodes in bulk."""
+        result = []
+
+        # 1. Топологическая сортировка узлов
+        objs = self.sort_nodes(objs)
+
+        # 1. Создаем self-ссылки для всех узлов: (node, node, 0).
+        self_links = [
+            self.model(parent=obj, child=obj, depth=0)
+            for obj in objs
+        ]
+        result.extend(
+            super().bulk_create(self_links, batch_size, *args, **kwargs)
+        )
+
+        # 2. Формируем отображение: id родителя -> список его детей.
+        children_map = defaultdict(list)
+        for obj in objs:
+            if obj.tn_parent_id:
+                children_map[obj.tn_parent_id].append(obj)
+
+        # 3. Пробуем определить корневые узлы (с tn_parent == None).
+        root_nodes = [obj for obj in objs if obj.tn_parent is None]
+
+        # Если корневых узлов нет, значит вставляем поддерево.
+        if not root_nodes:
+            # Определяем "верхние" узлы поддерева:
+            # те, чей родитель не входит в список вставляемых объектов.
+            objs_ids = {obj.id for obj in objs if obj.id is not None}
+            top_nodes = [
+                obj for obj in objs if obj.tn_parent_id not in objs_ids
+            ]
+
+            # Для каждого такого узла, если родитель существует, получаем
+            # записи замыкания для родителя и добавляем новые записи для
+            # (ancestor -> node) с depth = ancestor.depth + 1.
+            new_entries = []
+            for node in top_nodes:
+                if node.tn_parent_id:
+                    parent_closures = self.model.objects.filter(
+                        child_id=node.tn_parent_id
+                    )
+                    for ancestor in parent_closures:
+                        new_entries.append(
+                            self.model(
+                                parent=ancestor.parent,
+                                child=node,
+                                depth=ancestor.depth + 1
+                            )
+                        )
+            if new_entries:
+                result.extend(
+                    super().bulk_create(
+                        new_entries, batch_size, *args, **kwargs
+                    )
+                )
+
+            # Устанавливаем узлы верхнего уровня поддерева как начальные
+            # для обхода.
+            current_nodes = top_nodes
+        else:
+            current_nodes = root_nodes
+
+        # 4. Рекурсивная функция для обхода уровней.
+        def process_level(current_nodes):
+            next_level = []
+            new_entries = []
+            for node in current_nodes:
+                # Для текущего узла получаем все записи замыкания (его предков).
+                ancestors = self.model.objects.filter(child=node)
+                for child in children_map.get(node.id, []):
+                    for ancestor in ancestors:
+                        new_entries.append(
+                            self.model(
+                                parent=ancestor.parent,
+                                child=child,
+                                depth=ancestor.depth + 1
+                            )
+                        )
+                    next_level.append(child)
+            if new_entries:
+                result.extend(
+                    super().bulk_create(
+                        new_entries, batch_size, *args, **kwargs
+                    )
+                )
+            if next_level:
+                process_level(next_level)
+
+        process_level(current_nodes)
+
         self.model.clear_cache()
         return result
 
     @transaction.atomic
     def bulk_update(self, objs, fields=None, batch_size=1000):
         """
-        Update the records in the closure table for the list of updated nodes.
+        Обновляет таблицу замыкания для объектов, у которых изменился tn_parent.
 
-        For each node whose tn_parent has changed, the closure records
-        for its entire subtree are recalculated:
-        1. The ancestor chain of the new parent is selected.
-        2. The subtree (with closure records) of the updated node is selected.
-        3. For each combination (ancestor, descendant), a new depth is
-           calculated.
-        4. Old "dangling" records (those where the descendant has a link to
-           a non-subtree) are removed.
-        5. New records are inserted using the bulk_create method.
+        Предполагается, что все объекты из списка objs уже есть в таблице
+        замыкания, но их связи (как для родителей, так и для детей) могли
+        измениться.
+
+        Алгоритм:
+        1. Формируем отображение: id родителя → список его детей.
+        2. Определяем корневые узлы обновляемого поддерева:
+           – Узел считается корневым, если его tn_parent равен None или его
+           родитель не входит в objs.
+        3. Для каждого корневого узла, если есть внешний родитель, получаем его
+           замыкание из базы.
+           Затем формируем записи замыкания для узла (все внешние связи с
+           увеличенным depth и self-ссылка).
+        4. С помощью BFS обходим поддерево: для каждого узла для каждого его
+           ребёнка создаём записи, используя родительские записи (увеличенные
+           на 1) и добавляем self-ссылку для ребёнка.
+        5. Удаляем старые записи замыкания для объектов из objs и сохраняем
+           новые пакетно.
         """
-        if not objs:
-            return
+        # 1. Топологическая сортировка узлов
+        objs = self.sort_nodes(objs)
 
-        # --- 1. We obtain chains of ancestors for new parents.
-        parent_ids = {node.tn_parent.pk for node in objs if node.tn_parent}
-        parent_closures = list(
-            self.filter(child__in=parent_ids).values(
-                'child',
-                'parent',
-                'depth'
-            )
-        )
-        # We collect in a dictionary: key is the parent ID (tn_parent),
-        # value is the list of records.
-        parent_closures_dict = {}
-        for pc in parent_closures:
-            parent_closures_dict.setdefault(pc['child'], []).append(pc)
+        # 2. Построим отображение: id родителя → список детей
+        children_map = defaultdict(list)
+        for obj in objs:
+            if obj.tn_parent_id:
+                children_map[obj.tn_parent_id].append(obj)
 
-        # --- 2. Obtain closing records for the subtrees of the
-        # nodes being updated.
-        updated_ids = [node.pk for node in objs]
-        subtree_closures = list(self.filter(parent__in=updated_ids).values(
-            'parent',
-            'child',
-            'depth'
-        ))
-        # Group by ID of the node being updated (i.e. by parent in the
-        # closing record)
-        subtree_closures_dict = {}
-        for sc in subtree_closures:
-            subtree_closures_dict.setdefault(sc['parent'], []).append(sc)
+        # Множество id обновляемых объектов
+        objs_ids = {obj.id for obj in objs}
 
-        # --- 3. Construct new close records for each updated node with
-        # a new parent.
-        new_records = []
-        for node in objs:
-            # If the node has become root (tn_parent=None), then there are
-            # no additional connections with ancestors.
-            if not node.tn_parent:
-                continue
-            # From the closing chain of the new parent we get a list of its
-            # ancestors
-            p_closures = parent_closures_dict.get(node.tn_parent.pk, [])
-            # From the node subtree we get the closing records
-            s_closures = subtree_closures_dict.get(node.pk, [])
-            # If for some reason the subtree entries are missing, we will
-            # ensure that there is a custom entry.
-            if not s_closures:
-                s_closures = [{
-                    'parent': node.pk,
-                    'child': node.pk,
-                    'depth': 0
-                }]
-            # Combine: for each ancestor of the new parent and for each
-            # descendant from the subtree
-            for p in p_closures:
-                for s in s_closures:
-                    new_depth = p['depth'] + s['depth'] + 1
-                    new_records.append(
-                        self.model(
-                            parent_id=p['parent'],
-                            child_id=s['child'],
-                            depth=new_depth
-                        )
+        # 3. Определяем корневые узлы обновляемого поддерева:
+        # Узел считается корневым, если его tn_parent либо равен None, либо
+        # его родитель не входит в objs.
+        roots = [
+            obj for obj in objs
+            if (obj.tn_parent is None) or (obj.tn_parent_id not in objs_ids)
+        ]
+
+        # Список для накопления новых записей замыкания
+        new_closure_entries = []
+
+        # Очередь для BFS: каждый элемент — кортеж (node, node_closure),
+        # где node_closure — список записей замыкания для этого узла.
+        queue = deque()
+        for node in roots:
+            if node.tn_parent_id:
+                # Получаем замыкание внешнего родителя из базы
+                external_ancestors = list(
+                    self.model.objects.filter(child_id=node.tn_parent_id)
+                    .values('parent_id', 'depth')
+                )
+                # Для каждого найденного предка создаём запись для node с
+                # depth+1
+                node_closure = [
+                    self.model(
+                        parent_id=entry['parent_id'],
+                        child=node,
+                        depth=entry['depth'] + 1
                     )
+                    for entry in external_ancestors
+                ]
+            else:
+                node_closure = []
+            # Добавляем self-ссылку (node → node, depth 0)
+            node_closure.append(self.model(parent=node, child=node, depth=0))
 
-        # --- 4. Remove old closing records so that there are no "tails".
-        # For each updated node, calculate a subset of IDs related to its
-        # subtree
-        for node in objs:
-            subtree_ids = set()
-            # Be sure to include the node itself (its self-link should
-            # already be there)
-            subtree_ids.add(node.pk)
-            for sc in subtree_closures_dict.get(node.pk, []):
-                subtree_ids.add(sc['child'])
-            # Remove records where the child belongs to the subtree, but the
-            # parent is not included in it.
-            self.filter(child_id__in=subtree_ids).exclude(
-                parent_id__in=subtree_ids).delete()
+            # Сохраняем записи для текущего узла и кладем в очередь для
+            # обработки его поддерева
+            new_closure_entries.extend(node_closure)
+            queue.append((node, node_closure))
 
-        # --- 5. Insert new closing records in bulk.
-        if new_records:
-            super().bulk_create(new_records, batch_size=batch_size)
+        # 4. BFS-обход поддерева: для каждого узла создаём замыкание для его
+        # детей
+        while queue:
+            parent_node, parent_closure = queue.popleft()
+            for child in children_map.get(parent_node.id, []):
+                # Для ребенка новые записи замыкания:
+                # для каждого записи родителя создаем (ancestor -> child)
+                # с depth+1
+                child_closure = [
+                    self.model(
+                        parent_id=entry.parent_id,
+                        child=child,
+                        depth=entry.depth + 1
+                    )
+                    for entry in parent_closure
+                ]
+                # Добавляем self-ссылку для ребенка
+                child_closure.append(
+                    self.model(parent=child, child=child, depth=0)
+                )
+
+                new_closure_entries.extend(child_closure)
+                queue.append((child, child_closure))
+
+        # 5. Удаляем старые записи замыкания для обновляемых объектов
+        self.model.objects.filter(child_id__in=objs_ids).delete()
+
+        # 6. Сохраняем новые записи пакетно
+        super().bulk_create(new_closure_entries)
         self.model.clear_cache()
-        return new_records
 
 
 class ClosureModelManager(models.Manager):
@@ -230,30 +296,38 @@ class TreeNodeQuerySet(models.QuerySet):
         super().__init__(model, query, using, hints)
 
     @transaction.atomic
-    def bulk_create(self, objs, batch_size=1000, ignore_conflicts=False):
+    def bulk_create(self, objs, batch_size=1000, *args, **kwargs):
         """
         Bulk create.
 
         Method of bulk creation objects with updating and processing of
         the Closuse Model.
         """
-        # Regular bulk_create for TreeNodeModel
-        objs = super().bulk_create(objs, batch_size, ignore_conflicts)
-        # Call ClosureModel to insert closure records
-        self.closure_model.objects.bulk_create(objs, batch_size=batch_size)
-        # Возвращаем результат
+        # 1. Массовая вставка узлов в Модели Смежности
+        objs = super().bulk_create(objs, batch_size, *args, **kwargs)
+
+        # 2. Синхронизация Модели Закрытия
+        self.closure_model.objects.bulk_create(objs)
+
+        # 3. Очиска кэша и возрат результата
         self.model.clear_cache()
-        return self.filter(pk__in=[obj.pk for obj in objs])
+        return objs
 
     @transaction.atomic
     def bulk_update(self, objs, fields, batch_size=1000, **kwargs):
-        """."""
-        closure_model = self.model.closure_model
+        """Bulk update."""
+        # 1. Выполняем обновление Модели Смежности
+        result = super().bulk_update(objs, fields, batch_size, **kwargs)
+
+        # 2. Синхронизируем данные в Модели Закрытия
         if 'tn_parent' in fields:
             # Попросим ClosureModel обработать move
-            closure_model.objects.bulk_update(objs)
-        result = super().bulk_update(objs, fields, batch_size, **kwargs)
-        closure_model.clear_cache()
+            self.closure_model.objects.bulk_update(
+                objs, ["tn_parent",], batch_size
+            )
+
+        # 3. Очиска кэша и возрат результата
+        self.model.clear_cache()
         return result
 
 
@@ -269,13 +343,77 @@ class TreeNodeModelManager(models.Manager):
         custom QuerySet.
         """
         self.model.clear_cache()
-        return self.get_queryset().bulk_create(
+        result = self.get_queryset().bulk_create(
             objs, batch_size=batch_size, ignore_conflicts=ignore_conflicts
         )
+        transaction.on_commit(lambda: self.update_auto_increment())
+        return result
+
+    def bulk_update(self, objs, fields=None, batch_size=1000):
+        """Bulk Update."""
+        self.model.clear_cache()
+        result = self.get_queryset().bulk_update(objs, fields, batch_size)
+        return result
 
     def get_queryset(self):
         """Return a QuerySet that sorts by 'tn_parent' and 'tn_priority'."""
         queryset = TreeNodeQuerySet(self.model, using=self._db)
-        return queryset.order_by('tn_parent', 'tn_priority')
+        return queryset.order_by(
+            F('tn_parent').asc(nulls_first=True),
+            'tn_parent',
+            'tn_priority'
+        )
+
+    def get_auto_increment_sequence(self):
+        """Get auto increment sequence."""
+        table_name = self.model._meta.db_table
+        pk_column = self.model._meta.pk.column
+        with connection.cursor() as cursor:
+            query = "SELECT pg_get_serial_sequence(%s, %s)"
+            cursor.execute(query, [table_name, pk_column])
+            result = cursor.fetchone()
+        return result[0] if result else None
+
+    def update_auto_increment(self):
+        """Update auto increment."""
+        table_name = self.model._meta.db_table
+        with connection.cursor() as cursor:
+            db_engine = connection.vendor
+
+            if db_engine == "postgresql":
+                sequence_name = self.get_auto_increment_sequence()
+                # Получаем максимальный id из таблицы
+                cursor.execute(
+                    f"SELECT COALESCE(MAX(id), 0) FROM {table_name};"
+                )
+                max_id = cursor.fetchone()[0]
+                next_id = max_id + 1
+                # Прямо указываем следующее значение последовательности
+                cursor.execute(
+                    f"ALTER SEQUENCE {sequence_name} RESTART WITH {next_id};"
+                )
+            elif db_engine == "mysql":
+                cursor.execute(f"SELECT MAX(id) FROM {table_name};")
+                max_id = cursor.fetchone()[0] or 0
+                next_id = max_id + 1
+                cursor.execute(
+                    f"ALTER TABLE {table_name} AUTO_INCREMENT = {next_id};"
+                )
+            elif db_engine == "sqlite":
+                cursor.execute(
+                    f"UPDATE sqlite_sequence SET seq = (SELECT MAX(id) \
+FROM {table_name}) WHERE name='{table_name}';"
+                )
+            elif db_engine == "mssql":
+                cursor.execute(f"SELECT MAX(id) FROM {table_name};")
+                max_id = cursor.fetchone()[0] or 0
+                cursor.execute(
+                    f"DBCC CHECKIDENT ('{table_name}', RESEED, {max_id});"
+                )
+            else:
+                raise NotImplementedError(
+                    f"Autoincrement for {db_engine} is not supported."
+                )
+
 
 # The End

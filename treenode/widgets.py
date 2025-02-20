@@ -13,7 +13,7 @@ Features:
 - Supports dynamic model binding for reusable implementations.
 - Integrates with Django’s form system.
 
-Version: 2.0.0
+Version: 2.0.11
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -48,18 +48,34 @@ class TreeWidget(forms.Select):
         if "placeholder" in attrs:
             del attrs["placeholder"]
 
-        # Принудительно передаём `model`
+        # Force passing `model`
         if "data-forward" not in attrs:
-            try:
+            model = getattr(self, "model", None)
+            if not model and hasattr(self.choices, "queryset"):
                 model = self.choices.queryset.model
+            if model is None:
+                raise ValueError("TreeWidget: model not passed or not defined")
+
+            try:
                 label = model._meta.app_label
                 model_name = model._meta.model_name
                 model_label = f"{label}.{model_name}"
                 attrs["data-forward"] = f'{{"model": "{model_label}"}}'
+            except AttributeError as e:
+                raise ValueError(
+                    "TreeWidget: model object is not a valid Django model"
+                ) from e
+
+        # Force focus to current value
+        if self.choices:
+            try:
+                current_value = self.value()
+                if current_value:
+                    attrs["data-selected"] = str(current_value)
             except Exception:
-                attrs["data-forward"] = '{"model": ""}'
+                # In case the value is missing
+                pass
 
         return attrs
-
 
 # The End

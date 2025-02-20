@@ -1,0 +1,32 @@
+{% extends "admin/base_site.html" %}
+{% block content %}
+    <div class="module">
+        <h2>Import Results</h2>
+        
+            <ul class="messagelist">
+                <li class="success"><strong>Created:</strong> {{ created_count }} records</li>
+                <li class="success"><strong>Updated:</strong> {{ updated_count }} records</li>
+            </ul>
+
+            {% if errors %}
+                <div class="errornote">
+                    <p>Errors occurred while importing the data:</p>
+                    <ul>
+                        {% for error in errors %}
+                            <li>{{ error }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+
+        <div style="margin-top: 20px;">
+            <button type="button" class="button" onclick="redirectAfterImport()">Finish</button>
+        </div>
+    </div>
+
+    <script>
+        function redirectAfterImport() {
+            window.location.href = window.location.pathname.replace("import/", "") + "?import_done=1";
+        }
+    </script>
+{% endblock %}

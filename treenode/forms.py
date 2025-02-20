@@ -1,15 +1,16 @@
 """
 TreeNode Form Module.
 
-This module defines the TreeNodeForm class, which dynamically determines the TreeNode model.
-It utilizes TreeWidget and automatically excludes the current node and its descendants
-from the parent choices.
+This module defines the TreeNodeForm class, which dynamically determines
+the TreeNode model.
+It utilizes TreeWidget and automatically excludes the current node and its
+descendants from the parent choices.
 
 Functions:
 - __init__: Initializes the form and filters out invalid parent choices.
 - factory: Dynamically creates a form class for a given TreeNode model.
 
-Version: 2.0.10
+Version: 2.0.11
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -17,6 +18,7 @@ Email: timurkady@yandex.com
 from django import forms
 import numpy as np
 from django.forms.models import ModelChoiceField, ModelChoiceIterator
+from django.utils.translation import gettext_lazy as _
 
 from .widgets import TreeWidget
 
@@ -43,14 +45,18 @@ class SortedModelChoiceIterator(ModelChoiceIterator):
 class SortedModelChoiceField(ModelChoiceField):
     """ModelChoiceField Class for tn_paret field."""
 
+    to_field_name = None
+
     def _get_choices(self):
-        """Get sorted choices."""
         if hasattr(self, '_choices'):
             return self._choices
-        return SortedModelChoiceIterator(self)
+
+        choices = list(SortedModelChoiceIterator(self))
+        if self.empty_label is not None:
+            choices.insert(0, ("", self.empty_label))
+        return choices
 
     def _set_choices(self, value):
-        """Set choices."""
         self._choices = value
 
     choices = property(_get_choices, _set_choices)
@@ -77,19 +83,26 @@ class TreeNodeForm(forms.ModelForm):
         """Init Method."""
         super().__init__(*args, **kwargs)
 
-        # Use a model bound to a form
         model = self._meta.model
 
-        if "tn_parent" in self.fields and self.instance.pk:
-            excluded_ids = [self.instance.pk] + \
-                list(self.instance.get_descendants_pks())
-            queryset = model.objects.exclude(pk__in=excluded_ids)
+        if "tn_parent" in self.fields:
+            self.fields["tn_parent"].required = False
+            self.fields["tn_parent"].empty_label = _("Root")
+            queryset = model.objects.all()
+
             original_field = self.fields["tn_parent"]
             self.fields["tn_parent"] = SortedModelChoiceField(
                 queryset=queryset,
-                label=self.fields["tn_parent"].label,
-                widget=original_field.widget
+                label=original_field.label,
+                widget=original_field.widget,
+                empty_label=original_field.empty_label,
+                required=False
             )
+            self.fields["tn_parent"].widget.model = queryset.model
+
+            # Если есть текущее значение, устанавливаем его
+            if self.instance and self.instance.pk and self.instance.tn_parent:
+                self.fields["tn_parent"].initial = self.instance.tn_parent
 
     @classmethod
     def factory(cls, model):
