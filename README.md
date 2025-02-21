@@ -642,7 +642,8 @@ Speeding up tree operations and reducing database load.
 **Version 3.0 – Drag-and-Drop and Admin UI Improvements**  
 Making tree management more intuitive.  
 - Adding **Drag-and-Drop** support for node sorting in **Django admin**.  
-- Enhancing node filtering and search with **AJAX**.  
+- Enhancing node filtering and search with **AJAX**.
+- Refusing to cache calculation results in favor of **caching tree nodes**.
 
 **Version 4.0 – Moving Beyond Django ORM**  
 Enabling tree structures to function without a strict dependency on Django.  
