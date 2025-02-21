@@ -576,13 +576,31 @@ TREENODE_CACHE_LIMIT = 100
 
 ## **Export and Import Functionality**
 ### **Overview**
-TreeNode v2.0 includes **built-in export and import features** for easier data migration. Supported Formats: `csv`, `json`, `xlsx`, `yaml`, `tsv`
+TreeNode v2.0 includes **built-in export and import features** for easier data migration. Supported Formats: `csv`, `json`, `xlsx`, `yaml`, `tsv`. The system supports importing and exporting data for any models, allowing users to efficiently manage and update data while preserving its structure and relationships.
 ### Installation for Import/Export Features
 By default, import/export functionality is **not included** to keep the package lightweight. If you need these features, install the package with:
 ```bash
 pip install django-fast-treenode[import_export]
 ```
 Once installed, **import/export buttons will appear** in the Django admin interface.
+#### **Data Processing Logic**
+When importing data into the system, **three key fields** must be present:
+- **`id`** – the unique identifier of the record.
+- **`tn_parent`** – the identifier of the parent node.
+- **`tn_priority`** – the ordinal number of the node among its parent's children.
+
+These fields ensure the correct construction of the hierarchical data structure.
+
+Important:
+- If a record with the same `id` **already exists** in the database, its data **will be updated** with the imported values.
+- If no record with the given `id` **is found**, a **new record will be created** with the specified parameters.
+
+This import mechanism is designed to allow users to:
+- **Export data**, edit it (e.g., in a CSV, Excel, or JSON file).
+- **Upload the modified file** without disrupting the model structure.
+- **Update only the changed data**, keeping relationships with other models intact (e.g., without altering primary and foreign key values).
+
+This approach provides **flexible data management**, enabling users to safely apply modifications without manually updating each record in the system.
 ### **Important Considerations**
 Exporting objects with M2M fields may lead to serialization issues. Some formats (e.g., CSV) do not natively support many-to-many relationships. If you encounter errors, consider exporting data in `json` or `yaml` format, which better handle nested structures.
 
@@ -608,14 +626,37 @@ python manage.py migrate
 This will apply any necessary database changes automatically.
 
 
-## To do
-These improvements aim to enhance usability, performance, and maintainability for all users of `django-fast-treenode`:
-* **Cache Algorithm Optimization**: Testing and integrating more advanced cache eviction strategies.
-* **Drag-and-Drop UI Enhancements**: Adding intuitive drag-and-drop functionality for tree node management.
-* to be happy, to don't worry, until die.
+## Development Plan
 
+`django-fast-treenode` continues to evolve to become the best alternative to other tree management solutions. The focus is on **speed, usability, and flexibility**. In future versions, I plan to implement:  
+
+**Version 2.1 – Compatibility and Optimization**  
+Reducing dependencies and simplifying migration from other libraries.  
+- Removing `numpy` in favor of lighter alternatives.  
+- Expanding functionality to simplify migration from other tree packages.  
+
+**Version 2.2 – Performance and Caching**  
+Speeding up tree operations and reducing database load.  
+- Improving caching: implementing more efficient caching algorithms.  
+- Optimizing query performance.  
+
+**Version 2.3 – Ease of use in API-first projects**  
+- Developing lightweight tree serialization.  
+- Adding initial integration with **Django REST Framework (DRF)**.  
+
+**Version 3.0 – Drag-and-Drop and Admin UI Improvements**  
+Making tree management more intuitive.  
+- Adding **Drag-and-Drop** support for node sorting in **Django admin**.  
+- Enhancing node filtering and search with **AJAX**.  
+
+**Version 4.0 – Moving Beyond Django ORM**  
+Enabling tree structures to function without a strict dependency on Django.  
+- Introducing support for **various storage backends**.  
+- Adding compatibility with **Redis** and **JSON-based** tree storage.  
+- Expanding usage in **API-first** projects.  
+
+Stay tuned for updates!
 Your wishes, objections, comments are welcome.
-
 
 # Django-fast-treenode
 
@@ -633,4 +674,11 @@ Released under [MIT License](https://github.com/TimurKady/django-fast-treenode/b
 Instead, always use the **documented methods** described above or refer to the [original application documentation](https://github.com/fabiocaccamo/django-treenode). 
 
 ## Credits
-This software contains, uses, and includes, in a modified form, [django-treenode](https://github.com/fabiocaccamo/django-treenode) by [Fabio Caccamo](https://github.com/fabiocaccamo). Special thanks to [Mathieu Leplatre](https://blog.mathieu-leplatre.info/pages/about.html) for the advice used in writing this application.
+Special thanks to [Mathieu Leplatre](https://blog.mathieu-leplatre.info/pages/about.html) for the advice used in writing this application.
+
+
+
+
+
+
+
