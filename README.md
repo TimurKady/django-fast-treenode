@@ -81,13 +81,11 @@ Make your model-admin class inherit from `treenode.admin.TreeNodeModelAdmin`.
 
 ```python
 from django.contrib import admin
-
 from treenode.admin import TreeNodeModelAdmin
-from treenode.forms import TreeNodeForm
 
 from .models import Category
 
-
+@admin.register(Category)
 class CategoryAdmin(TreeNodeModelAdmin):
 
     # set the changelist display mode: 'accordion', 'breadcrumbs' or 'indentation' (default)
@@ -97,13 +95,10 @@ class CategoryAdmin(TreeNodeModelAdmin):
     # treenode_display_mode = TreeNodeModelAdmin.TREENODE_DISPLAY_MODE_BREADCRUMBS
     # treenode_display_mode = TreeNodeModelAdmin.TREENODE_DISPLAY_MODE_INDENTATION
 
-    # use TreeNodeForm to automatically exclude invalid parent choices
-    form = TreeNodeForm
+    list_display = ("name",)
+    search_fields = ("name",)
 
-admin.site.register(Category, CategoryAdmin)
 ```
-
----
 
 ### `settings.py`
 You can use a custom cache backend by adding a `treenode` entry to `settings.CACHES`, otherwise the default cache backend will be used.
@@ -128,8 +123,7 @@ class YoursForm(TreeNodeForm):
     # Your code is here
 ```
 
-
-## Usage
+## Usage (API)
 ### Methods/Properties
 
 -   [`delete`](#delete)
@@ -583,6 +577,7 @@ By default, import/export functionality is **not included** to keep the package 
 pip install django-fast-treenode[import_export]
 ```
 Once installed, **import/export buttons will appear** in the Django admin interface.
+
 #### **Data Processing Logic**
 When importing data into the system, **three key fields** must be present:
 - **`id`** – the unique identifier of the record.
