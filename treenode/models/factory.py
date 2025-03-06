@@ -10,7 +10,7 @@ Features:
 - Dynamically creates and assigns a Closure Model for each TreeNodeModel.
 - Facilitates the management of hierarchical relationships.
 
-Version: 2.0.0
+Version: 2.1.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -18,7 +18,7 @@ Email: timurkady@yandex.com
 
 import sys
 from django.db import models
-from .closure import ClosureModel  # Используем готовый ClosureModel
+from .closure import ClosureModel
 
 
 class TreeFactory(models.base.ModelBase):
@@ -61,11 +61,21 @@ class TreeFactory(models.base.ModelBase):
                 on_delete=models.CASCADE,
             ),
 
+            "node": models.OneToOneField(
+                cls._meta.model,
+                related_name="tn_closure",
+                on_delete=models.CASCADE,
+                null=True,
+                blank=True,
+            ),
+
             "__module__": cls.__module__
         }
+
         closure_model = type(closure_name, (ClosureModel,), fields)
         setattr(sys.modules[cls.__module__], closure_name, closure_model)
 
         cls.closure_model = closure_model
+
 
 # The End

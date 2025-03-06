@@ -1,161 +1,299 @@
 /* 
 TreeNode Select2 Widget
 
-This script enhances the Select2 dropdown widget for hierarchical data 
-representation in Django admin. It supports AJAX data fetching and ensures 
-a structured tree-like display.
+This script replaces Django's Select widget for presenting hierarchical data
+in the Django admin panel. The widget is intended for a parent field, but
+can be used to select a tree node with a different purpose. It provides
+structured tree display.
+The widget supports AJAX fetching, which avoids loading the entire tree.
 
 Features:
-- Dynamically initializes Select2 on elements with the class `tree-widget`.
-- Retrieves data via AJAX and displays it with proper indentation.
-- Supports dark mode and automatically applies theme styling.
+- Dynamically initializes select-like elements with the `tree-widget` class.
+- Fetches data via AJAX and displays it with the correct indentation.
+- Supports dark mode and automatically applies theme styles.
 - Handles parent-child relationships and updates node priorities.
 
-Version: 2.0.0
+Version: 2.1.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 */
 
-
 (function ($) {
-    "use strict";
+  "use strict";
 
-    /**
-     * Initializes Select2 on all elements with the class "tree-widget".
-     * Ensures proper AJAX data fetching and hierarchical display.
-     */
-    function initializeSelect2() {
-        $(".tree-widget").each(function () {
-            var $widget = $(this);
-            var url = $widget.data("url"); // Fetch the data URL for AJAX requests
+  var TreeWidget = {
+    // Initialize each widget by container with class .tree-widget
+    init: function (selector) {
+      $(selector).each(function () {
+        var $widget = $(this);
 
-            if (!url) {
-                console.error("Error: Missing data-url for", $widget.attr("id"));
-                return;
+        // Find the hidden input, dropdown list and display area inside
+        // the container
+        var $select = $widget.find('input[type="hidden"]').first();
+        var $dropdown = $widget.find('.tree-widget-dropdown').first();
+        var $display = $widget.find('.tree-widget-display').first();
+
+        // Get URL for AJAX and model data from data attributes
+        var ajaxUrl = $select.data('url');
+        var ajaxUrlChildren = $select.data('url-children');
+        var forwardData = $select.attr("data-forward");
+        if (typeof forwardData === "string" && forwardData.trim().length > 0) {
+            try {
+                forwardData = JSON.parse(forwardData.replace(/&quot;/g, '"'));
+            } catch (e) {
+                console.error("Invalid JSON in data-forward:", forwardData, e);
+                forwardData = {};
             }
-
-            // Initialize Select2 with AJAX support
-            $widget.select2({
-                ajax: {
-                    url: url,
-                    dataType: "json",
-                    delay: 250, // Introduces a delay to avoid excessive API calls
-                    data: function (params) {
-                        var forwardData = $widget.data("forward") || {}; // Retrieve forwarded model data
-                        return {
-                            q: params.term, // Search query parameter
-                            model: forwardData.model || null, // Pass the model name
-                        };
-                    },
-                    processResults: function (data) {
-                        if (!data.results) {
-                            return { results: [] }; // Return an empty array if no results exist
-                        }
-                        return { results: data.results };
-                    },
-                },
-                minimumInputLength: 0, // Allows opening the dropdown without typing
-                allowClear: true, // Enables the "clear selection" button
-                width: "100%", // Expands the dropdown to fit the parent container
-                templateResult: formatTreeResult, // Custom rendering function for hierarchical display
-            });
-
-            // Immediately apply theme styling after Select2 initialization
-            var select2Instance = $widget.data("select2");
-            if (select2Instance && isDarkTheme()) {
-                select2Instance.$container
-                    .find(".select2-selection--single")
-                    .addClass("dark-theme"); // Apply dark mode styling if enabled
-            }
-        });
-    }
-
-    /**
-     * Checks whether dark mode is enabled.
-     * It relies on the presence of the `data-theme="dark"` attribute on the <html> tag.
-     * @returns {boolean} - True if dark mode is active, false otherwise.
-     */
-    function isDarkTheme() {
-        return document.documentElement.getAttribute("data-theme") === "dark";
-    }
-
-    /**
-     * Applies or removes the `.dark-theme` class to the Select2 dropdown and container.
-     * Ensures the dropdown styling follows the selected theme.
-     */
-    function applyTheme() {
-        var dark = isDarkTheme(); // Check if dark mode is enabled
-        var $dropdown = $(".select2-container--open .select2-dropdown"); // Get the currently open dropdown
-        var $container = $(".select2-container--open .select2-selection--single"); // Get the selection box
-
-        if (dark) {
-            $dropdown.addClass("dark-theme");
-            $container.addClass("dark-theme");
         } else {
-            $dropdown.removeClass("dark-theme");
-            $container.removeClass("dark-theme");
+            forwardData = {};
         }
-    }
-
-    /**
-     * Formats each result in the Select2 dropdown to visually represent hierarchy.
-     * Adds indentation based on node depth and assigns folder/file icons.
-     * @param {Object} result - A single result object from the AJAX response.
-     * @returns {jQuery} - A formatted span element with the tree structure.
-     */
-    function formatTreeResult(result) {
-        if (!result.id) {
-            return result.text; // Return plain text for placeholder options
+        
+        var selectedId = $select.data('selected');  // Получаем значение data-selected
+        if (selectedId === undefined) {
+            selectedId = "";
         }
-        var level = result.level || 0; // Retrieve node depth (default: 0)
-        var is_leaf = result.is_leaf || false; // Determine if it's a leaf node
-        var indent = "&nbsp;&nbsp;".repeat(level); // Create indentation based on depth
-        var icon = is_leaf ? "📄 " : "📂 "; // Use 📄 for leaves, 📂 for parent nodes
-        return $("<span>" + indent + icon + result.text + "</span>"); // Return formatted text
+        
+        var widgetData = {
+            $widget: $widget,
+            $select: $select,
+            $dropdown: $dropdown,
+            $display: $display,
+            ajaxUrl: ajaxUrl,
+            urlChildren: ajaxUrlChildren,
+            model: forwardData.model || '',
+            selectedId: selectedId,
+            mode: selectedId ? 'selected' : 'default'
+        };
+        
+        $widget.data('widgetData', widgetData);
+
+        // Load data for the current mode (default, selected or search)
+        TreeWidget.loadData(widgetData);
+
+        // Bind event handlers
+        TreeWidget.bindEvents(widgetData);
+      });
+    },
+
+    // Method of loading data via AJAX
+    loadData: function (widgetData, searchQuery) {
+      var params = {model: widgetData.model};
+      if (searchQuery) {
+        params.q = searchQuery;
+        widgetData.mode = 'search';
+      } else if (widgetData.selectedId) {
+        params.select_id = widgetData.selectedId;
+        widgetData.mode = 'selected';
+      } else {
+        widgetData.mode = 'default';
+      }
+
+      $.ajax({
+        url: widgetData.ajaxUrl,
+        data: params,
+        dataType: 'json',
+        success: function (response) {
+          var $treeList = widgetData.$dropdown.find('.tree-list');
+          $treeList.empty();
+          TreeWidget.renderNodes(response.results, $treeList);
+          // If needed, you can show a dropdown after loading the data
+          // widgetData.$dropdown.show();
+        },
+        error: function (error) {
+          console.error("Error loading data:", params, error);
+        }
+      });
+    },
+    
+    // Method for formatting a node
+    formatNode: function(node, levelOverride) {
+      // If levelOverride is passed, use it, otherwise take node.level
+      var level = (typeof levelOverride !== 'undefined') ? levelOverride : parseInt(node.level, 10);
+      var $li = $('<li></li>')
+        .addClass('tree-node')
+        .attr('data-id', node.id)
+        .attr('data-level', level);
+      var indent = level * 20;
+      $li.css('margin-left', indent + 'px');
+    
+      // If the node is not a leaf node, add a button to expand it,
+      // otherwise insert an empty element for alignment
+      if (!node.is_leaf) {
+        var $expandBtn = $('<button type="button" class="expand-button">⏵</button>');
+        $li.append($expandBtn);
+        $li.append('<span class="node-icon">📁</span>').css({
+          display: 'inline-block'
+        })
+      } else {
+        $li.append($('<span class="no-expand"></span>').css({
+          display: 'inline-block'
+        }));
+        $li.append('<span class="node-icon">📄</span>').css({
+          display: 'inline-block'
+        })
+      }
+    
+      $li.append($('<span class="node-text"></span>').text(node.text));
+    
+      return $li;
+    },
+    
+    // Method of drawing a node
+    renderNodes: function (nodes, $container) {
+      $container.empty();
+      $.each(nodes, function (index, node) {
+        var $nodeElem = TreeWidget.formatNode(node);
+        $container.append($nodeElem);
+      });
+    },
+    
+    // Handler for clicking on the node's expand button
+    expandNode: function ($button, widgetData) {
+      var $li = $button.closest('li.tree-node');
+      var nodeId = $li.data('id');
+      if ($button.data('expanded')) {
+        TreeWidget.collapseNode($li);
+        $button.text('⏵').data('expanded', false);
+      } else {
+        $.ajax({
+          url: widgetData.urlChildren,
+          data: { model: widgetData.model, reference_id: nodeId },
+          dataType: 'json',
+          success: function (response) {
+              var parentLevel = parseInt($li.data('level'), 10);
+              var $childrenFragment = $();
+              $.each(response.results, function (index, node) {
+                  var $childLi = TreeWidget.formatNode(node, parentLevel + 1);
+                  $childrenFragment = $childrenFragment.add($childLi);
+              });
+              $li.after($childrenFragment);
+              $button.text('⏷').data('expanded', true);
+          },
+          error: function (data, error) {
+              console.error("Error loading children: ", data, error);
+          }
+        });
+      }
+    },
+
+    // Node collapse method
+    // Remove child elements that are higher than the parent
+    collapseNode: function ($li) {
+      var currentLevel = parseInt($li.data('level'), 10);
+      var $next = $li.next();
+      while ($next.length && parseInt($next.data('level'), 10) > currentLevel) {
+        var $temp = $next.next();
+        $next.remove();
+        $next = $temp;
+      }
+    },
+
+    // Binding events for widget operation
+    bindEvents: function (widgetData) {
+      var $dropdown = widgetData.$dropdown;
+      var $widget = widgetData.$widget;
+      var $select = widgetData.$select;
+      var $display = widgetData.$display;
+
+      // Handle click on node expand button
+      $dropdown.on('click', '.expand-button', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        TreeWidget.expandNode($(this), widgetData);
+      });
+
+      // Handle node selection (click on node text)
+      $dropdown.on('click', 'li.tree-node', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $li = $(this).closest('li.tree-node');
+        var nodeId = $li.data('id');
+        $select.val(nodeId);
+        $select.data('selected', nodeId);
+        // Update the displayed selected value
+        $widget.find('.selected-node').text($(this).text());
+        $dropdown.hide();
+      });
+
+      // Processing input in the search field
+      $dropdown.on('keyup', '.tree-search', function (e) {
+        var query = $(this).val();
+        if (query.length > 0) {
+          TreeWidget.loadData(widgetData, query);
+        } else {
+          TreeWidget.loadData(widgetData);
+        }
+      });
+
+      // Handle clicking on the search field clear button
+      $dropdown.on('click', '.tree-search-clear', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        var $search = $dropdown.find('.tree-search');
+        $search.val('');
+        TreeWidget.loadData(widgetData);
+      });
+
+      // Toggle the visibility of the dropdown list when clicking on the
+      // display area
+      $display.on('click', function (e) {
+        e.preventDefault();
+        $dropdown.toggle();
+      });
+
+      // Hide the dropdown when clicking outside the widget
+      $(document).on('click', function (e) {
+        if (!$widget.is(e.target) && $widget.has(e.target).length === 0) {
+          $dropdown.hide();
+        }
+      });
     }
+  };
 
-    /**
-     * Binds event listeners and initializes Select2.
-     * Ensures correct theme application on page load and during interactions.
-     */
-    $(document).ready(function () {
-        initializeSelect2();
-        applyTheme();
 
-        // When a Select2 dropdown opens, update its theme
-        $(document).on("select2:open", function () {
-            applyTheme();
-        });
+  /**
+   * Checks whether dark mode is enabled.
+   * It relies on the presence of the `data-theme="dark"` attribute on the
+   * <html> tag.
+   * @returns {boolean} - True if dark mode is active, false otherwise.
+   */
+  function isDarkTheme() {
+    return document.documentElement.getAttribute("data-theme") === "dark";
+  }
 
-        // When the theme toggle button is clicked, reapply the theme
-        $(document).on("click", ".theme-toggle", function () {
-            applyTheme();
-        });
+  /**
+   * Applies or removes the `.dark-theme` class to the Select2 dropdown and
+   * container. Ensures the dropdown styling follows the selected theme.
+   */
+  function applyTheme() {
+    var dark = isDarkTheme(); // Check if dark mode is enabled
+    var $container = $(".tree-widget");
+    var $dropdown = $(".tree-widget-dropdown");
 
-        // When a parent changes, get the number of its children and set tn_priority
-        $("#id_tn_parent").on("change", function () {
-            var parentId = $(this).val();
-            var model = $(this).data("forward") ? $(this).data("forward").model : null;
+    if (dark) {
+        $dropdown.addClass("dark-theme");
+        $container.addClass("dark-theme");
+    } else {
+        $dropdown.removeClass("dark-theme");
+        $container.removeClass("dark-theme");
+    }
+  }
 
-            if (!parentId || !model) {
-                console.log("No parent selected or model is missing.");
-                return;
-            }
+  // Initialize the widget when the page loads using the .tree-widget container
+  $(document).ready(function () {
+    applyTheme();
+    TreeWidget.init('.tree-widget');
 
-            $.ajax({
-                url: "/treenode/get-children-count/",
-                data: { parent_id: parentId, model: model },
-                dataType: "json",
-                success: function (response) {
-                    if (response.children_count !== undefined) {
-                        $("#id_tn_priority").val(response.children_count);  // Set the value
-                    }
-                },
-                error: function () {
-                    console.error("Failed to fetch children count.");
-                }
-            });
-        });
+    // When a widget dropdown opens, update its theme
+    // $(document).on("select2:open", function () {
+    //  applyTheme();
+    // });
+
+    // When the theme toggle button is clicked, reapply the theme
+    $(document).on("click", ".theme-toggle", function () {
+      applyTheme();
     });
+        
+  });
 
 })(django.jQuery || window.jQuery);

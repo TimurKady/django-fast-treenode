@@ -10,13 +10,12 @@ Functions:
 - __init__: Initializes the form and filters out invalid parent choices.
 - factory: Dynamically creates a form class for a given TreeNode model.
 
-Version: 2.0.11
+Version: 2.1.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
 from django import forms
-import numpy as np
 from django.forms.models import ModelChoiceField, ModelChoiceIterator
 from django.utils.translation import gettext_lazy as _
 
@@ -29,13 +28,12 @@ class SortedModelChoiceIterator(ModelChoiceIterator):
     def __iter__(self):
         """Return sorted choices based on tn_order."""
         qs_list = list(self.queryset.all())
-        # Sort objects by their tn_order using NumPy.
-        tn_orders = np.array([obj.tn_order for obj in qs_list])
-        sorted_indices = np.argsort(tn_orders)
-        # Iterate over sorted indices and yield (value, label) pairs.
-        for idx in sorted_indices:
-            # Cast the index to int if it is numpy.int64.
-            obj = qs_list[int(idx)]
+
+        # Sort objects
+        sorted_objects = self.queryset.model._sort_node_list(qs_list)
+
+        # Iterate yield (value, label) pairs.
+        for obj in sorted_objects:
             yield (
                 self.field.prepare_value(obj),
                 self.field.label_from_instance(obj)
@@ -100,7 +98,7 @@ class TreeNodeForm(forms.ModelForm):
             )
             self.fields["tn_parent"].widget.model = queryset.model
 
-            # Если есть текущее значение, устанавливаем его
+            # If there is a current value, set it
             if self.instance and self.instance.pk and self.instance.tn_parent:
                 self.fields["tn_parent"].initial = self.instance.tn_parent
 

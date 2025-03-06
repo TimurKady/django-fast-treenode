@@ -10,7 +10,7 @@ Features:
 - Maintains lexicographic order when padded with leading zeros.
 - Supports negative numbers.
 
-Version: 2.0.0
+Version: 2.1.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -33,3 +33,5 @@ def to_base36(num):
         num, rem = divmod(num, 36)
         result.append(digits[rem])
     return sign + ''.join(reversed(result))
+
+# The End

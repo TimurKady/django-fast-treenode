@@ -11,9 +11,10 @@ Features:
 - Smooth hover effects and animations.
 - Consistent layout adjustments for better UI interaction.
 
-Version: 2.0.0
+Version: 2.1.0
 Author: Timur Kady
 Email: timurkady@yandex.com
+
 */
 
 
@@ -22,19 +23,71 @@ Email: timurkady@yandex.com
     100% {width: 100px; height: 100px;}
 }
 
+.field-drag, .field-toggle {
+    width: 18px !important; 
+    text-align: center !important;
+    padding: 8px 0px !important;
+}
+
 .treenode-space {
     display: inline-block;
-    width: 10px;
-    height: 10px;
-    margin-top: 0px;
-    margin-bottom: 0px;
-    margin-right: 7px !important;
+    width: 18px;
+    height: 18px;
+    margin: 0px 3px !important;
     background-color: transparent;
     border: 1px solid transparent;
     padding: 1px;
 }
 
 .treenode-toggle {
+    display: inline-block;
+    cursor: pointer;
+    font-weight: bold;
+    font-size: 12px;
+    color: #ddd;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+    padding: 0px;
+    margin: 0px;
+    border: 1px solid #eee;
+    border-radius: 9px;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.treenode-toggle[expanded="true"] {
+    color: green;
+}
+
+
+.treenode-toggle:hover {
+    background-color: #e0e0e0;
+    color: #007bff;
+}
+
+.dark-theme .treenode-toggle {
+    color: #ccc;
+    background-color: #444;
+    border: 1px solid #555;
+}
+
+.dark-theme .treenode-toggle:hover {
+    background-color: #333;
+    color: #fff;
+}
+
+.dark-theme .treenode-toggle {
+    color: #ccc;
+    background-color: #444;
+    border: 1px solid #555;
+}
+
+.dark-theme .treenode-toggle:hover {
+    background-color: #333;
+    color: #fff;
+}
+
+.treenode-drag-handle {
     display: inline-block;
     text-align: center;
     font-weight: bold;
@@ -43,64 +96,18 @@ Email: timurkady@yandex.com
     height: 10px;
     line-height: 10px;
     padding: 1px;
-    cursor: pointer;
-    margin-top: 0px;
-    margin-bottom: 0px;
-    margin-right: 7px !important;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    cursor: ns-resize;
+    opacity: 0.25;
 }
 
-.treenode-toggle:hover {
-    background-color: #e0e0e0;
-    color: #007bff;
+.treenode-drag-handle:hover {
+    opacity: 1.0;
 }
 
-.dark-theme .treenode-toggle {
+.dark-theme treenode-drag-handle {
     color: #ccc;
-    background-color: #444;
-    border: 1px solid #555;
-}
-
-.dark-theme .treenode-toggle:hover {
-    background-color: #333;
-    color: #fff;
-}
-
-.treenode-toggle {
-    font-weight: bold;
-    display: inline-block;
-
-    text-align: center;
-    cursor: pointer;
-    margin-right: 5px;
-    border-radius: 4px;
-
-    padding: 2px;
-    transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.treenode-toggle:hover {
-    background-color: #e0e0e0;
-    color: #007bff;
-}
-
-.dark-theme .treenode-toggle {
-    color: #ccc;
-    background-color: #444;
-    border: 1px solid #555;
-}
-
-.dark-theme .treenode-toggle:hover {
-    background-color: #333;
-    color: #fff;
 }
 
 .treenode-wrapper {
     display: inline-block;
-}
-
-.dark-theme .treenode-toggle {
-    color: #ccc;
 }

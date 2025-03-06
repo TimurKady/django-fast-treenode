@@ -1,0 +1,7 @@
+{% for row in rows %}
+<tr data-node-id="{{ row.node_id }}" data-parent-of="{{ row.parent_id }}">
+  {% for cell, class in row.cells %}
+    <td class="{{ class }}">{{ cell|safe }}</td>
+  {% endfor %}
+</tr>
+{% endfor %}
