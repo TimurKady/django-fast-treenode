@@ -74,16 +74,16 @@ python manage.py migrate
 ```
 
 ## Documentation
-Full documentation is available at [this link](treenode/docs/index.md).
+Full documentation is available at [this link](https://django-fast-treenode.readthedocs.io/latest/).
 
 Quick access links:
-* [Installation, configuration and fine tuning](treenode/docs/installation.md)
-* [Model Inheritance and Extensions](treenode/docs/models.md)
-* [Working with Admin Classes](treenode/docs/admin.md)
-* [API Reference](treenode/docs/api.md)
-* [Import & Export](treenode/docs/import_export.md)
-* [Caching and working with cache](treenode/docs/cache.md)
-* [Migration and upgrade guide](treenode/docs/migration.md)
+* [Installation, configuration and fine tuning](https://django-fast-treenode.readthedocs.io/latest/installation/)
+* [Model Inheritance and Extensions](https://django-fast-treenode.readthedocs.io/latest/models/)
+* [Working with Admin Classes](https://django-fast-treenode.readthedocs.io/latest/admin/)
+* [API Reference](https://django-fast-treenode.readthedocs.io/latest/api/)
+* [Import & Export](https://django-fast-treenode.readthedocs.io/latest/import_export/)
+* [Caching and working with cache](https://django-fast-treenode.readthedocs.io/latest/cache/)
+* [Migration and upgrade guide](https://django-fast-treenode.readthedocs.io/latest/migration/)
 
 Your wishes, objections, comments are welcome.
 
