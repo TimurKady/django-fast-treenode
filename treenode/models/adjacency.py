@@ -20,6 +20,7 @@ Email: timurkady@yandex.com
 
 from django.db import models, transaction
 from django.db.models.signals import pre_save, post_save
+from django.utils.translation import gettext_lazy as _
 
 from .factory import TreeFactory
 import treenode.models.mixins as mx
@@ -57,10 +58,14 @@ class TreeNodeModel(
         related_name='tn_children',
         on_delete=models.CASCADE,
         null=True,
-        blank=True
+        blank=True,
+        verbose_name=_('Parent')
     )
 
-    tn_priority = models.PositiveIntegerField(default=0)
+    tn_priority = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_('Priority')
+    )
 
     objects = TreeNodeModelManager()
 
@@ -98,24 +103,42 @@ class TreeNodeModel(
     def delete(self, cascade=True):
         """Delete node."""
         model = self._meta.model
+        parent = self.get_parent()
 
         if not cascade:
+            new_siblings_count = parent.get_siblings_count()
             # Get a list of children
             children = self.get_children()
-            # Move them to one level up
-            for child in children:
-                child.tn_parent = self.tn_parent
-            # Udate both models in bulk
-            model.objects.bulk_update(
-                children,
-                ("tn_parent",),
-                batch_size=1000
-            )
+            if children:
+                # Move them to one level up
+                for child in children:
+                    child.tn_parent = self.tn_parent
+                    child.tn_priority = new_siblings_count + child.tn_priority
+                # Udate both models in bulk
+                model.objects.bulk_update(
+                    children,
+                    ("tn_parent",),
+                    batch_size=1000
+                )
+
         # All descendants and related records in the ClosingModel will be
         # cleared by cascading the removal of ForeignKeys.
         super().delete()
         # Can be excluded. The cache has already been cleared by the manager.
         model.clear_cache()
+
+        # Update tn_priority
+        if parent is None:
+            siblings = model.get_roots()
+        else:
+            siblings = parent.get_children()
+
+        if siblings:
+            siblings = [node for node in siblings if node.pk != self.pk]
+            sorted_siblings = sorted(siblings, key=lambda x: x.tn_priority)
+            for index, node in enumerate(sorted_siblings):
+                node.tn_priority = index
+            model.objects.bulk_update(siblings, ['tn_priority'])
 
     def save(self, force_insert=False, *args, **kwargs):
         """Save a model instance with sync closure table."""
@@ -150,21 +173,22 @@ class TreeNodeModel(
                 raise ValueError("You cannot move a node into its own child.")
 
         # Save the object and synchronize with the closing table
-        with transaction.atomic():
-            # Disable signals
-            with (disable_signals(pre_save, model),
-                  disable_signals(post_save, model)):
-                super().save(force_insert=force_insert, *args, **kwargs)
-                # Run synchronize
-                if is_new:
-                    self.closure_model.insert_node(self)
-                elif is_move:
-                    subtree_nodes = self.get_descendants(include_self=True)
-                    self.closure_model.move_node(subtree_nodes)
-                # Update priorities among neighbors or clear cache if there was
-                # no movement
-                if is_new or is_move:
-                    self._update_priority()
+        # Disable signals
+        with (disable_signals(pre_save, model),
+              disable_signals(post_save, model)):
+
+            if is_new or is_move:
+                self._update_priority()
+            super().save(force_insert=force_insert, *args, **kwargs)
+            # Run synchronize
+            if is_new:
+                self.closure_model.insert_node(self)
+            elif is_move:
+                subtree_nodes = self.get_descendants(include_self=True)
+                self.closure_model.move_node(subtree_nodes)
+            # Update priorities among neighbors or clear cache if there was
+            # no movement
+
         # Clear model cache
         model.clear_cache()
         # Send signal post_save
@@ -179,29 +203,21 @@ class TreeNodeModel(
 
     def _update_priority(self):
         """Update tn_priority field for siblings."""
-        if self.tn_parent is None:
-            # Node is a root
-            parent = None
-            queryset = self._meta.model.get_roots_queryset()
-        else:
-            # Node isn't a root
-            parent = self.tn_parent
-            queryset = parent.tn_children.all()
-
-        siblings = list(queryset.exclude(pk=self.pk))
-        sorted_siblings = sorted(siblings, key=lambda x: x.tn_priority)
-        insert_pos = min(self.tn_priority, len(sorted_siblings))
-        sorted_siblings.insert(insert_pos, self)
-        for index, node in enumerate(sorted_siblings):
+        siblings = self.get_siblings()
+        siblings = sorted(siblings, key=lambda x: x.tn_priority)
+        insert_pos = min(self.tn_priority, len(siblings))
+        siblings.insert(insert_pos, self)
+        for index, node in enumerate(siblings):
             node.tn_priority = index
+        siblings = [s for s in siblings if s.tn_priority != self.tn_priority]
+
         # Save changes
         model = self._meta.model
-        with transaction.atomic():
-            model.objects.bulk_update(sorted_siblings, ('tn_priority',))
-        super().save(update_fields=['tn_priority'])
+        model.objects.bulk_update(siblings, ['tn_priority'])
         model.clear_cache()
 
-    def _get_place(cls, target, position=None):
+    @classmethod
+    def _get_place(cls, target, position=0):
         """
         Get position relative to the target node.
 
@@ -230,28 +246,42 @@ class TreeNodeModel(
           the treenode_sort_field field.
 
         """
-        if not isinstance(position, str) or '-' not in position:
+        if isinstance(position, int):
+            priority = position
+        elif not isinstance(position, str) or '-' not in position:
             raise ValueError(f"Invalid position format: {position}")
 
         part1, part2 = position.split('-')
-
         if part1 not in {'first', 'last', 'left', 'right', 'sorted'} or \
            part2 not in {'root', 'child', 'sibling'}:
             raise ValueError(f"Unknown position type: {position}")
 
-        parent = (
-            None if part2 == 'root' else
-            target.tn_parent if part2 == 'sibling' else
-            target if part2 == 'child' else None
-        )
+        # Determine the parent depending on the type of position
+        if part2 == 'root':
+            parent = None
+        elif part2 == 'sibling':
+            parent = target.tn_parent
+        elif part2 == 'child':
+            parent = target
+        else:
+            parent = None
 
-        count = cls.objects.filter(tn_parent=parent).count() if target else 0
+        if parent:
+            count = parent.get_children_count()
+        else:
+            count = cls.get_roots_count()
 
-        priority = (
-            0 if part1 == 'first'else
-            target.tn_priority if part1 == 'left' else
-            target.tn_priority + 1 if part1 == 'right' else count
-        )
+        # Определяем позицию (приоритет)
+        if part1 == 'first':
+            priority = 0
+        elif part1 == 'left':
+            priority = target.tn_priority
+        elif part1 == 'right':
+            priority = target.tn_priority + 1
+        elif part1 in {'last', 'sorted'}:
+            priority = count
+        else:
+            priority = count
 
         return parent, priority
 

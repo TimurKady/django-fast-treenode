@@ -38,7 +38,7 @@
           var $btn = $tableBody.find(`.treenode-toggle[data-node-id="${nodeId}"]`);
           var $parentRow = $btn.closest('tr');
           $parentRow.after(response.html);
-          $btn.html('➖').data('expanded', true);
+          $btn.html('▼').data('expanded', true);
           // Раскрываем следующий узел после завершения AJAX-запроса
           expandNext(nodes);
         }
@@ -73,7 +73,7 @@
     // Если узел уже развёрнут, сворачиваем его
     if ($btn.data('expanded')) {
       removeAllDescendants(nodeId);
-      $btn.html('➕').data('expanded', false);
+      $btn.html('►').data('expanded', false);
       
       // Убираем узел из списка сохранённых
       expandedNodes = expandedNodes.filter(id => id !== nodeId);
@@ -84,7 +84,7 @@
         if (response.html) {
           var $parentRow = $btn.closest('tr');
           $parentRow.after(response.html);
-          $btn.html('➖').data('expanded', true);
+          $btn.html('▼').data('expanded', true);
           
           // Сохраняем узел в localStorage
           if (!expandedNodes.includes(nodeId)) {

@@ -127,8 +127,6 @@ class ClosureModel(models.Model):
         """Move a nodes (node and its subtree) to a new parent."""
         # Call bulk_update passing a single object
         cls.objects.bulk_update(nodes, batch_size=1000)
-        # Clear cache
-        cls.clear_cache()
 
     @classmethod
     @transaction.atomic

@@ -72,7 +72,7 @@ class TreeNodeAdminModel(AdminMixin, admin.ModelAdmin):
 
     def toggle(self, obj):
         """Добавление кнопки для открытия/закрытия поддерева, если есть дети."""
-        icon = "➕"  # ➖
+        icon = "►"  # ➕➖
         if obj.get_children_count() > 0:
             return mark_safe(
                 f'<button class="treenode-toggle" '

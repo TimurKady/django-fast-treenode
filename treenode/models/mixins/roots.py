@@ -79,7 +79,7 @@ class TreeNodeRootsMixin(models.Model):
     @classmethod
     def get_roots_count(cls):
         """Get a list with all root nodes."""
-        return cls.get_roots_queryset().count()
+        return len(cls.get_roots_pks())
 
     @classmethod
     def get_first_root(cls):

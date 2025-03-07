@@ -41,18 +41,19 @@ Email: timurkady@yandex.com
 
 .treenode-toggle {
     display: inline-block;
-    cursor: pointer;
-    font-weight: bold;
-    font-size: 12px;
-    color: #ddd;
     width: 18px;
     height: 18px;
+    background: var(--button-bg);
+    color: var(--button-fg);
+    border-radius: 3px;
+    border: none;
+    margin: 0px 5px;
+    cursor: pointer;
+    font-size: 12px;
     line-height: 18px;
     padding: 0px;
-    margin: 0px;
-    border: 1px solid #eee;
-    border-radius: 9px;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    opacity: 0.8;
+    transition: opacity 0.2s ease, color 0.2s ease;
 }
 
 .treenode-toggle[expanded="true"] {
@@ -61,8 +62,7 @@ Email: timurkady@yandex.com
 
 
 .treenode-toggle:hover {
-    background-color: #e0e0e0;
-    color: #007bff;
+    opacity: 1.0;
 }
 
 .dark-theme .treenode-toggle {

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from .proxy import TreeNodeModel
+from .adjacency import TreeNodeModel
 
 
 __all__ = ["TreeNodeModel",]
