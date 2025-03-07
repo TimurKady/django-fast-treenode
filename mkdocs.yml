@@ -1,6 +1,8 @@
 site_name: Django Fast TreeNode
 repo_url: https://github.com/TimurKady/django-fast-treenode
 repo_name: TimurKady/django-fast-treenode
+docs_dir: treenode/docs
+
 theme:
   name: mkdocs
   features:
