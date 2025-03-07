@@ -4,8 +4,8 @@ repo_name: TimurKady/django-fast-treenode
 docs_dir: docs
 
 theme:
-  name: material
-  theme: custommill
+  name: custommill
+
   features:
     - navigation.instant
     - navigation.tracking
