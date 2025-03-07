@@ -2,7 +2,7 @@ site_name: Django Fast TreeNode
 repo_url: https://github.com/TimurKady/django-fast-treenode
 repo_name: TimurKady/django-fast-treenode
 theme:
-  name: material
+  name: mkdocs
   features:
     - navigation.instant
     - navigation.tracking
