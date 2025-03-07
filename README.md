@@ -1,6 +1,3 @@
-
-# ⚠️ Version 2.1.0 - betta.
-
 # Django-fast-treenode 
 **Combining Adjacency List and Closure Table for Optimal Performance**
 
