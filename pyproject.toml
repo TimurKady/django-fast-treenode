@@ -45,6 +45,6 @@ import_export = [
 
 [project.urls]
 Homepage = "https://github.com/TimurKady/django-fast-treenode"
-Documentation = "https://github.com/TimurKady/django-fast-treenode/blob/2.1/treenode/docs/index.md"
+Documentation = "https://django-fast-treenode.readthedocs.io/latest/"
 Source = "https://github.com/TimurKady/django-fast-treenode"
 Issues = "https://github.com/TimurKady/django-fast-treenode/issues"
