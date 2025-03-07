@@ -4,8 +4,9 @@ repo_name: TimurKady/django-fast-treenode
 docs_dir: docs
 
 theme:
-  name: custommill
-
+  name: readthedocs
+  palette:
+    scheme: slate
   features:
     - navigation.instant
     - navigation.tracking
