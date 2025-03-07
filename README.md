@@ -74,16 +74,16 @@ python manage.py migrate
 ```
 
 ## Documentation
-Full documentation is available at [this link](#).
+Full documentation is available at [this link](treenode/docs/index.md).
 
 Quick access links:
-* [Installation, configuration and fine tuning](#)
-* [Model Inheritance and Extensions](#)
-* [Working with Admin Classes](#)
-* [API Reference](#)
-* [Import & Export](#)
-* [Caching and working with cache](#)
-* [Migration and upgrade guide](#)
+* [Installation, configuration and fine tuning](treenode/docs/installation.md)
+* [Model Inheritance and Extensions](treenode/docs/models.md)
+* [Working with Admin Classes](treenode/docs/admin.md)
+* [API Reference](treenode/docs/api.md)
+* [Import & Export](treenode/docs/import_export.md)
+* [Caching and working with cache](treenode/docs/cache.md)
+* [Migration and upgrade guide](treenode/docs/migration.md)
 
 Your wishes, objections, comments are welcome.
 
