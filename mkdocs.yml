@@ -5,8 +5,7 @@ docs_dir: docs
 
 theme:
   name: material
-  palette:
-    scheme: custommill
+  theme: custommill
   features:
     - navigation.instant
     - navigation.tracking
