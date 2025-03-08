@@ -74,16 +74,16 @@ python manage.py migrate
 ```
 
 ## Documentation
-Full documentation is available at [this link](https://django-fast-treenode.readthedocs.io/latest/).
+Full documentation is available at [this link](https://django-fast-treenode.readthedocs.io/).
 
 Quick access links:
-* [Installation, configuration and fine tuning](https://django-fast-treenode.readthedocs.io/latest/installation/)
-* [Model Inheritance and Extensions](https://django-fast-treenode.readthedocs.io/latest/models/)
-* [Working with Admin Classes](https://django-fast-treenode.readthedocs.io/latest/admin/)
-* [API Reference](https://django-fast-treenode.readthedocs.io/latest/api/)
-* [Import & Export](https://django-fast-treenode.readthedocs.io/latest/import_export/)
-* [Caching and working with cache](https://django-fast-treenode.readthedocs.io/latest/cache/)
-* [Migration and upgrade guide](https://django-fast-treenode.readthedocs.io/latest/migration/)
+* [Installation, configuration and fine tuning](https://django-fast-treenode.readthedocs.io/installation/)
+* [Model Inheritance and Extensions](https://django-fast-treenode.readthedocs.io/models/)
+* [Working with Admin Classes](https://django-fast-treenode.readthedocs.io/admin/)
+* [API Reference](https://django-fast-treenode.readthedocs.io/api/)
+* [Import & Export](https://django-fast-treenode.readthedocs.io/import_export/)
+* [Caching and working with cache](https://django-fast-treenode.readthedocs.io/cache/)
+* [Migration and upgrade guide](https://django-fast-treenode.readthedocs.io/migration/)
 
 Your wishes, objections, comments are welcome.
 
