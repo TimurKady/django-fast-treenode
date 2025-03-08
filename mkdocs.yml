@@ -26,7 +26,7 @@ nav:
       - Working with Admin Classes: admin.md
   - Caching: cache.md
   - Import & Export: import_export.md
-  - Roadmap: radmap.md
+  - Roadmap: roadmap.md
 
 markdown_extensions:
   - toc:
