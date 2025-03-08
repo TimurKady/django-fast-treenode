@@ -1,4 +1,4 @@
-site_name: Django Fast TreeNode
+site_name: django-fast-treenode
 repo_url: https://github.com/TimurKady/django-fast-treenode
 repo_name: TimurKady/django-fast-treenode
 docs_dir: docs
@@ -22,8 +22,8 @@ nav:
       - Migration Guide: migration.md
   - Models:
       - Model Inheritance & Extensions: models.md
-  - Admin Panel: admin.md
-  - API Reference: api.md
+      - API Reference: api.md
+      - Working with Admin Classes: admin.md
   - Caching: cache.md
   - Import & Export: import_export.md
   - Roadmap: radmap.md
