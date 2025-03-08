@@ -94,3 +94,5 @@ Released under [MIT License](https://github.com/TimurKady/django-fast-treenode/b
 Thanks to everyone who contributed to the development and testing of this package, as well as the Django community for their inspiration and support. 
 
 Special thanks to [Fabio Caccamo](https://github.com/fabiocaccamo) for the idea behind creating a fast Django application for handling hierarchies and [Mathieu Leplatre](https://github.com/leplatrem) for the advice used in writing this application.
+
+[![Published on Django Packages](https://img.shields.io/badge/Published%20on-Django%20Packages-0c3c26)](https://djangopackages.org/packages/p/django-fast-treenode/)
