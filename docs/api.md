@@ -270,6 +270,7 @@ Moves the model instance relative to the target node and sets its position (if n
 ```python
 obj.move_to(target, position=0)
 ```
+
 Parameters:
 
 - `target`: еhe target node relative to which this node will be placed.
