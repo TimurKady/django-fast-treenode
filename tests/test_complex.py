@@ -1,8 +1,13 @@
+import os
+import django
 import time
 import traceback
 from django.db import models
 from django.test import TestCase, TransactionTestCase
 from treenode.models import TreeNodeModel
+
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings.py")
+django.setup()
 
 class TestModel(TreeNodeModel):
     """Test model for checking the operation of TreeNode."""
