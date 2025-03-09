@@ -1,7 +1,20 @@
 import time
 import traceback
+from django.db import models
 from django.test import TestCase, TransactionTestCase
-from devapp.models import Entity
+from treenode.models import TreeNodeModel
+
+class TestModel(TreeNodeModel):
+    """Test model for checking the operation of TreeNode."""
+
+    name = models.CharField(max_length=255, unique=True)
+    treenode_display_field = "name"
+
+    class Meta:
+        verbose_name = "TestModel"
+
+    def __str__(self):
+        return self.name
 
 
 class BasicOperationsTest(TestCase):
@@ -16,7 +29,7 @@ class BasicOperationsTest(TestCase):
 
         # 1. Insertion via node.save()
         try:
-            node1 = Entity(name='Node via save()')
+            node1 = TestModel(name='Node via save()')
             node1.save()
             if not node1.pk:
                 errors.append("Insertion via save() did not assign a PK.")
@@ -25,7 +38,7 @@ class BasicOperationsTest(TestCase):
 
         # 2. Insertion via objects.create()
         try:
-            node2 = Entity.objects.create(name='Node via create()')
+            node2 = TestModel.objects.create(name='Node via create()')
             if not node1.pk:
                 errors.append(
                     "Insertion via objects.create() did not assign a PK.")
@@ -36,11 +49,11 @@ class BasicOperationsTest(TestCase):
         # 3. Alternative method (insert_at or get_or_create)
         try:
             # For demonstration, use node1 as the parent if the insert_at method exists
-            if hasattr(Entity, 'insert_at'):
-                node3 = Entity(name='Node via insert_at()')
+            if hasattr(TestModel, 'insert_at'):
+                node3 = TestModel(name='Node via insert_at()')
                 node3.insert_at(node1)
-            elif hasattr(Entity.objects, 'get_or_create'):
-                node3, created = Entity.objects.get_or_create(
+            elif hasattr(TestModel.objects, 'get_or_create'):
+                node3, created = TestModel.objects.get_or_create(
                     name='Node via get_or_create()', defaults={'tn_parent': node1})
             else:
                 errors.append(
@@ -52,8 +65,8 @@ class BasicOperationsTest(TestCase):
         # Checking access methods (e.g. get_children)
         try:
             # Create a small tree
-            root = Entity.objects.create(name='Root')
-            child = Entity.objects.create(name='Child', tn_parent=root)
+            root = TestModel.objects.create(name='Root')
+            child = TestModel.objects.create(name='Child', tn_parent=root)
             # If the model defines a get_children() method, check its functionality
             if hasattr(root, 'get_children'):
                 children = root.get_children()
@@ -62,7 +75,7 @@ class BasicOperationsTest(TestCase):
                         "Method get_children() did not return the added child.")
             else:
                 # If the method does not exist, perform a simple filter by parent
-                children = Entity.objects.filter(tn_parent=root)
+                children = TestModel.objects.filter(tn_parent=root)
                 if child not in children:
                     errors.append(
                         "Filter by parent did not return the added child.")
@@ -99,7 +112,7 @@ class DeepTreePerformanceTest(TransactionTestCase):
         try:
             # Insertion of the root node
             start = time.time()
-            root = Entity.objects.create(name="Deep Root")
+            root = TestModel.objects.create(name="Deep Root")
             end = time.time()
             timings[0] = end - start
             nodes.append(root)
@@ -108,7 +121,7 @@ class DeepTreePerformanceTest(TransactionTestCase):
 
             for level in range(1, 201):
                 start = time.time()
-                new_node = Entity.objects.create(
+                new_node = TestModel.objects.create(
                     name=f"Node Level {level}", tn_parent=current_parent)
                 end = time.time()
                 timings[level] = end - start
@@ -154,11 +167,11 @@ class WideTreePerformanceTest(TransactionTestCase):
             # For 100 trees
             for root_index in range(1, 101):
                 tree_start = time.time()
-                root = Entity.objects.create(name=f"Wide Root {root_index}")
+                root = TestModel.objects.create(name=f"Wide Root {root_index}")
                 current_parent = root
                 # Create 5 levels of nesting for each root
                 for level in range(1, 6):
-                    new_node = Entity.objects.create(
+                    new_node = TestModel.objects.create(
                         name=f"Node {root_index}-{level}", tn_parent=current_parent)
                     current_parent = new_node
                 tree_end = time.time()
@@ -190,29 +203,29 @@ class MassInsertionTest(TestCase):
             for i in range(50, 76):
                 # 1. Insertion via save()
                 try:
-                    node = Entity(name=f"Mass Node {i} via save()")
+                    node = TestModel(name=f"Mass Node {i} via save()")
                     node.save()
                 except Exception as e:
                     errors.append(f"Error inserting node {i} via save(): {e}")
 
                 # 2. Insertion via objects.create()
                 try:
-                    Entity.objects.create(name=f"Mass Node {i} via create()")
+                    TestModel.objects.create(name=f"Mass Node {i} via create()")
                 except Exception as e:
                     errors.append(f"Error inserting node {i} via create(): {e}")
 
                 # 3. Alternative method (insert_at or get_or_create)
                 try:
                     # Take the first node in the database or create a parent
-                    parent = Entity.objects.first()
+                    parent = TestModel.objects.first()
                     if not parent:
-                        parent = Entity.objects.create(name="Default Parent")
+                        parent = TestModel.objects.create(name="Default Parent")
 
-                    if hasattr(Entity, 'insert_at'):
-                        node = Entity(name=f"Mass Node {i} via insert_at()")
+                    if hasattr(TestModel, 'insert_at'):
+                        node = TestModel(name=f"Mass Node {i} via insert_at()")
                         node.insert_at(parent)
-                    elif hasattr(Entity.objects, 'get_or_create'):
-                        Entity.objects.get_or_create(
+                    elif hasattr(TestModel.objects, 'get_or_create'):
+                        TestModel.objects.get_or_create(
                             name=f"Mass Node {i} via get_or_create()", defaults={'tn_parent': parent})
                     else:
                         errors.append(
@@ -246,20 +259,20 @@ class NodeDeletionTest(TestCase):
         errors = []
         print("\n=== NodeDeletionTest ===")
         try:
-            parent = Entity.objects.create(name="Deletion Parent")
-            child1 = Entity.objects.create(name="Child 1", tn_parent=parent)
-            child2 = Entity.objects.create(name="Child 2", tn_parent=parent)
+            parent = TestModel.objects.create(name="Deletion Parent")
+            child1 = TestModel.objects.create(name="Child 1", tn_parent=parent)
+            child2 = TestModel.objects.create(name="Child 2", tn_parent=parent)
 
             # Delete child1
             child1.delete()
-            remaining_children = Entity.objects.filter(tn_parent=parent)
+            remaining_children = TestModel.objects.filter(tn_parent=parent)
             if child1 in remaining_children:
                 errors.append(
                     "The deleted child1 is still present among the parent's children.")
 
             # Delete the parent and check cascading deletion
             parent.delete()
-            if Entity.objects.filter(pk=child2.pk).exists():
+            if TestModel.objects.filter(pk=child2.pk).exists():
                 errors.append(
                     "Child2 was not deleted after the parent was deleted (cascading deletion was expected).")
         except Exception as e:
@@ -288,17 +301,17 @@ class NodeMovingTest(TestCase):
         errors = []
         print("\n=== NodeMovingTest ===")
         try:
-            parent1 = Entity.objects.create(name="Original Parent")
-            parent2 = Entity.objects.create(name="New Parent")
-            child = Entity.objects.create(
+            parent1 = TestModel.objects.create(name="Original Parent")
+            parent2 = TestModel.objects.create(name="New Parent")
+            child = TestModel.objects.create(
                 name="Movable Child", tn_parent=parent1)
 
             # Moving the node
             child.set_parent(parent2)
             child.save()
 
-            children1 = Entity.objects.filter(tn_parent=parent1)
-            children2 = Entity.objects.filter(tn_parent=parent2)
+            children1 = TestModel.objects.filter(tn_parent=parent1)
+            children2 = TestModel.objects.filter(tn_parent=parent2)
             if child in children1:
                 errors.append(
                     "The node is still present in the original parent's children after moving.")
@@ -330,10 +343,10 @@ class NodeUpdateTest(TestCase):
         errors = []
         print("\n=== NodeUpdateTest ===")
         try:
-            node = Entity.objects.create(name="Original Name")
+            node = TestModel.objects.create(name="Original Name")
             node.name = "Updated Name"
             node.save()
-            updated_node = Entity.objects.get(pk=node.pk)
+            updated_node = TestModel.objects.get(pk=node.pk)
             if updated_node.name != "Updated Name":
                 errors.append("The node's name was not updated correctly.")
         except Exception as e:
@@ -362,12 +375,12 @@ class DataIntegrityTest(TestCase):
         errors = []
         print("\n=== DataIntegrityTest ===")
         try:
-            root = Entity.objects.create(name="Integrity Root")
-            child1 = Entity.objects.create(
+            root = TestModel.objects.create(name="Integrity Root")
+            child1 = TestModel.objects.create(
                 name="Integrity Child 1", tn_parent=root)
-            child2 = Entity.objects.create(
+            child2 = TestModel.objects.create(
                 name="Integrity Child 2", tn_parent=root)
-            grandchild = Entity.objects.create(
+            grandchild = TestModel.objects.create(
                 name="Integrity Grandchild", tn_parent=child1)
 
             # Move child2 under child1
@@ -381,7 +394,7 @@ class DataIntegrityTest(TestCase):
             grandchild.delete()
 
             # Verify relationships
-            root_children = Entity.objects.filter(tn_parent=root)
+            root_children = TestModel.objects.filter(tn_parent=root)
             if child1 not in root_children:
                 errors.append(
                     "Child1 not found among the root node's children.")
@@ -389,12 +402,12 @@ class DataIntegrityTest(TestCase):
                 errors.append(
                     "Child2 is present among the root node's children after moving.")
 
-            child1_children = Entity.objects.filter(tn_parent=child1)
+            child1_children = TestModel.objects.filter(tn_parent=child1)
             if child2 not in child1_children:
                 errors.append(
                     "Child2 not found among child1's children after moving.")
 
-            if Entity.objects.filter(name="Integrity Grandchild").exists():
+            if TestModel.objects.filter(name="Integrity Grandchild").exists():
                 errors.append("Grandchild still exists after deletion.")
         except Exception as e:
             errors.append("Exception in DataIntegrityTest: " + str(e))
@@ -421,14 +434,14 @@ class LargeVolumeTest(TransactionTestCase):
         errors = []
         print("\n=== LargeVolumeTest ===")
         try:
-            initial_count = Entity.objects.count()
+            initial_count = TestModel.objects.count()
             for i in range(1000):
                 try:
-                    Entity.objects.create(name=f"Large Node {i}")
+                    TestModel.objects.create(name=f"Large Node {i}")
                 except Exception as e:
                     errors.append(
                         f"Error inserting node {i} in large data volume: {e}")
-            final_count = Entity.objects.count()
+            final_count = TestModel.objects.count()
             if final_count - initial_count != 1000:
                 errors.append(
                     f"Expected 1000 new nodes, but got {final_count - initial_count}.")
@@ -459,7 +472,7 @@ class InvalidDataTest(TestCase):
         try:
             try:
                 # Attempt to create a node with invalid data
-                Entity.objects.create(name=None)
+                TestModel.objects.create(name=None)
                 errors.append(
                     "Creating a node with None for name did not raise an exception as expected.")
             except Exception:
@@ -468,7 +481,7 @@ class InvalidDataTest(TestCase):
 
             # Additionally, one can test creating a node with an empty string if that is not allowed
             try:
-                node = Entity(name="")
+                node = TestModel(name="")
                 node.save()
                 # If an empty string is allowed, then no error should be recorded
             except Exception as e:
