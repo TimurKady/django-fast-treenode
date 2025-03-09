@@ -1,3 +1,6 @@
+from treenode.models import TreeNodeModel
+
+
 class TestModel(TreeNodeModel):
     """Test model for checking the operation of TreeNode."""
 

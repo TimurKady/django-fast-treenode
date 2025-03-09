@@ -4,7 +4,6 @@ import time
 import traceback
 from django.db import models
 from django.test import TestCase, TransactionTestCase
-from treenode.models import TreeNodeModel
 from . import settings
 from . import TestModel
 
