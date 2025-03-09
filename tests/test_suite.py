@@ -6,25 +6,13 @@ from django.db import models
 from django.test import TestCase, TransactionTestCase
 from treenode.models import TreeNodeModel
 from . import settings
+from . import TestModel
 
 
 if "DJANGO_SETTINGS_MODULE" not in os.environ:
     os.environ["DJANGO_SETTINGS_MODULE"] = "tests.settings"
 
 django.setup()
-
-class TestModel(TreeNodeModel):
-    """Test model for checking the operation of TreeNode."""
-
-    name = models.CharField(max_length=255, unique=True)
-    treenode_display_field = "name"
-
-    class Meta:
-        verbose_name = "TestModel"
-
-    def __str__(self):
-        return self.name
-
 
 class BasicOperationsTest(TestCase):
     """
