@@ -5,16 +5,19 @@ But the **django-fast-treenode** package will continue to evolve from its origin
 
 In future versions, I plan to implement:
 
-### **Version 2.1 – Compatibility and Optimization**
+### **Version 2.1 – Compatibility and Optimization** ()
 Reducing dependencies and simplifying migration from other libraries.
+
 - **Expanding functionality** to simplify migration from other tree packages.
 - Introducing node **filtering and search with AJAX**.
 - **Optimizing query performance** by reducing query complexity and improving indexing strategies.
 - **Reducing database load** from the `TreeNodeAdmin` when working with large trees.
 - Removing `numpy` in favor of lighter alternatives.
+- Removing `Select2` in favor of light custom select2-like implementation.
 
 ### **Version 2.2 – Caching Improvements**
 Speeding up tree operations and reducing database load.
+
 - **Implementing a more efficient caching algorithm** to optimize performance and reduce recomputation.
 - **Refining cache expiration strategies** for better memory management.
 
