@@ -5,7 +5,7 @@ import traceback
 from django.db import models
 from django.test import TestCase, TransactionTestCase
 from . import settings
-from . import TestModel
+from .models import TestModel
 
 
 if "DJANGO_SETTINGS_MODULE" not in os.environ:
