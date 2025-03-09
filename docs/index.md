@@ -1,52 +1,63 @@
-# Django Fast TreeNode: A Powerful Solution for Hierarchical Data Management
+# Django Fast TreeNode
+**A Powerful Solution for Hierarchical Data Management**
 
 Welcome to the **django-fast-treenode** documentation!
 
 ## Overview
 
-**Django Fast TreeNode** is a specialized Django package designed to efficiently handle hierarchical data structures. It leverages combining Adjacency List and Closure Table to optimize querying and management of tree-like structures, making it an excellent choice for applications that require fast traversal, retrieval, and manipulation of nested relationships.
+**Django Fast TreeNode** is a specialized Django package designed to efficiently handle hierarchical data structures. It leverages **combining Adjacency List and Closure Table** to optimize querying and management of tree-like structures, making it an excellent choice for applications that require fast traversal, retrieval, and manipulation of nested relationships.
 
 The package is particularly useful in scenarios such as:
 
-- **Category trees** (e.g., product categories in e-commerce applications)
-- **Organizational hierarchies** (e.g., employee reporting structures)
-- **Menu structures** (e.g., nested navigation menus)
-- **Taxonomies** (e.g., classification of articles, tags, or topics)
+- **Categories and taxonomies**: Manage product categories, tags, and classification systems.
+- **Menus and navigation**: Create tree-like menus and nested navigation structures.
+- **Forums and comments**: Store threaded discussions and nested comment chains.
+- **Geographical data**: Represent administrative divisions, regions, and areas of influence.
+- **Organizational and Business Structures**: Model company hierarchies, business processes, employees and departments.
+
+In all applications, `django-fast-treenode` models show excellent **performance** and **stability**.
 
 ## Key Features
 
-### Efficient Tree Operations
+1. **Efficient Tree Operations**:
+    * Supports fast retrieval of ancestors, descendants, and siblings.
+    * Uses a **closure table approach** for optimal query performance.
 
-- Supports fast retrieval of ancestors, descendants, and siblings.
-- Uses a **closure table approach** for optimal query performance.
+2. **Django ORM Integration**:
+    * Extends Django’s `models.Model`, making it easy to integrate into existing applications.
+    * Custom manager (`TreeNodeManager`) provides useful tree-related query optimizations.
 
-### Django ORM Integration
 
-- Extends Django’s `models.Model`, making it easy to integrate into existing applications.
-- Custom manager (`TreeNodeManager`) provides useful tree-related query optimizations.
+3. **Query Optimization via Closure Table**
+    * Instead of naive recursive queries, the package precomputes relationships in a separate closure table.This allows you to run constant-time queries for retrieval using a **single database query**:
+        * Ancestors (`get_ancestors()`),
+        * Depth (`det_depth()`),
+        * Descendants (`get_descendants()`),
+        * Family (`get_family()`),
+        * Materialized Path(`get_breadcrumbs()` and `get_path()`),
+        * Roots (`get_root()`),
+        * Siblings (`get_siblings()`) and so on.
 
-### Admin Interface Enhancements
+4. **Automatic Ordering and Priority Management**:
+    * Nodes can be assigned priority values for custom sorting.
+    * Provides automatic ordering based on a **materialized path**.
 
-- Supports multiple tree display modes in the Django Admin:
-  - **Indentation mode** (classic hierarchical view)
-  - **Breadcrumbs mode** (for easy navigation)
-  - **Accordion mode** (collapsible structures)
-- Uses a **custom admin widget** (`TreeWidget`) to enhance usability.
+5. **Admin Interface Enhancements**:
+    * Supports multiple tree display modes in the Django Admin:
+        * **Indentation mode** (classic hierarchical view)
+        * **Breadcrumbs mode** (for easy navigation)
+        * **Accordion mode** (collapsible structures)
+    * Uses a **custom admin widget** (`TreeWidget`) to enhance usability.
 
-### Automatic Ordering and Priority Management
 
-- Nodes can be assigned priority values for custom sorting.
-- Provides automatic ordering based on a **materialized path**.
+6. **Caching for Performance**:
+    * Uses Django’s caching framework to optimize frequently accessed tree operations.
+    * Cached tree methods reduce redundant computations.
 
-### Caching for Performance
 
-- Uses Django’s caching framework to optimize frequently accessed tree operations.
-- Cached tree methods reduce redundant computations.
-
-### Bulk Operations Support
-
-- Implements efficient **bulk creation** of nodes.
-- Provides methods for **batch updates** and **tree rebuilding**.
+7. **Bulk Operations Support**:
+    * Implements efficient **bulk creation** of nodes.
+    * Provides methods for **batch updates** and **tree rebuilding**.
 
 By leveraging combining with Closure Tables, it offers superior performance compared to traditional tree structures.
 
