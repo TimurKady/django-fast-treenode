@@ -24,9 +24,12 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-          if [ -f tests/requirements.txt ]; then pip install -r tests/requirements.txt; fi
 
       - name: Run tests
-        run: 
-          export DJANGO_SETTINGS_MODULE=tests/settings
-          pytest tests/
+        env:
+          DJANGO_SETTINGS_MODULE: tests.settings
+        run: pytest tests/
+
+      - name: Check test results
+        if: ${{ failure() }}
+        run: echo "Tests failed. Check the logs for details."
