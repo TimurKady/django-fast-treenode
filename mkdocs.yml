@@ -1,6 +1,6 @@
 site_name: django-fast-treenode
 repo_url: https://github.com/TimurKady/django-fast-treenode
-repo_name: TimurKady/django-fast-treenode
+repo_name: django-fast-treenode
 docs_dir: docs
 
 theme:
