@@ -94,6 +94,7 @@ These methods are designed to manage **direct child nodes** within the tree stru
 obj.add_child(position=None, **kwargs)
 ```
 `position` specifies the order position of the object being added in the list of children of this node. It can be `'first-child'`, `'last-child'`, `'sorted-child'`, or an integer value.
+
 The `**kwargs` parameters contain the object creation data that will be passed to the inherited node model. Instead of passing the object creation data, you can pass an already created (but not yet saved) model instance to insert into the tree using the `instance` keyword.
 
 ```python
@@ -246,19 +247,20 @@ obj.insert_at(target, position='first-child', save=False)
 ```
 
 Parameters:
+
 - `target`: еhe target node relative to which this node will be placed.
 - `position`: the position, relative to the target node, where the current node object will be moved to, can be one of:
-  - `first-root`: the node will be the first root node;
-  - `last-root`: the node will be the last root node;
-  - `sorted-root`: the new node will be moved after sorting by the treenode_sort_field field;
-  - `first-sibling`: the node will be the new leftmost sibling of the target node;
-  - `left-sibling`: the node will take the target node’s place, which will be moved to the target position with shifting follows nodes;
-  - `right-sibling`: the node will be moved to the position after the target node;
-  - `last-sibling`: the node will be the new rightmost sibling of the target node;
-  - `sorted-sibling`: the new node will be moved after sorting by the treenode_sort_field field;
-  - first-child: the node will be the first child of the target node;
-  - last-child: the node will be the new rightmost child of the target
-  - sorted-child: the new node will be moved after sorting by the treenode_sort_field field.
+    - `first-root`: the node will be the first root node;
+    - `last-root`: the node will be the last root node;
+    - `sorted-root`: the new node will be moved after sorting by the treenode_sort_field field;
+    - `first-sibling`: the node will be the new leftmost sibling of the target node;
+    - `left-sibling`: the node will take the target node’s place, which will be moved to the target position with shifting follows nodes;
+    - `right-sibling`: the node will be moved to the position after the target node;
+    - `last-sibling`: the node will be the new rightmost sibling of the target node;
+    - `sorted-sibling`: the new node will be moved after sorting by the treenode_sort_field field;
+    - first-child: the node will be the first child of the target node;
+    - last-child: the node will be the new rightmost child of the target
+    - sorted-child: the new node will be moved after sorting by the treenode_sort_field field.
 - `save` : if `save=true`, the node will be saved in the tree. Otherwise,  the method will return a model instance with updated fields: parent field and position in sibling list.
 
 Before using this method, the model instance must be correctly created with all required fields defined. If the model has required fields, then simply creating an object and calling insert_at() will not work, because Django will raise an exception.
@@ -538,6 +540,7 @@ Something like this will be returned:
 All nodes are ordered by materialized path. 
 
 This can be used with a template like this:
+
 ```html
 {% for item, info in annotated_list %}
     {% if info.open %}
@@ -546,7 +549,7 @@ This can be used with a template like this:
         </li><li>
     {% endif %}
 
-{{ item }}
+        {{ item }}
 
     {% for close in info.close %}
         </li></ul>
@@ -663,7 +666,7 @@ Returns the children pks list. See [`get_children_pks()`](#get_children_pks) met
 #### obj.depth
 Returns the node depth. See [`get_depth()`](#get_depth) method.
 
-### obj.descendants:
+#### obj.descendants:
 Returns a list containing all descendants (itself is not included). See [`get_descendants()`](#get_descendants) method.
 
 #### obj.descendants_count
@@ -693,7 +696,7 @@ Returns node parent pk. See [`get_parent_pk()`](#get_parent_pk) method.
 #### obj.priority
 Returns node oder position (priority). See [`get_priority()`](#get_priority) method.
 
-### cls.roots
+#### cls.roots
 Returns a list with all root nodes. See [`get_roots()`](#get_roots) method.
 
 #### obj.root

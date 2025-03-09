@@ -111,7 +111,7 @@ The `django-fast-treenode` package contains the full set of methods you are used
 
 |**django-treebeard** | **django-fast-treenode** |**Features of use**|
 |---------------------|----------------------|----------------------|
-| The `pos` parameter in `add_sibling()` and `move()` methods |  The parameter `pos` has the name `position` | • The `position` parameter in `django-fast-treenode` always consists of two parts separated by `-`: the first part determines the insertion method (_first, left, right, last, sorted_), the second — the placement type (_child, sibling_). <br> • Instead of a string format, you can also pass position as an integer indicating the exact position of the node in the list.|
+| The `pos` parameter in `add_sibling()` and `move()` methods |  The parameter `pos` has the name `position` | • The `position` parameter in `django-fast-treenode` always consists of two parts separated by <br>`-`: the first part determines the insertion method (_first, left, right, last, sorted_), the second — the placement type (_child, sibling_). <br> • Instead of a string format, you can also pass position as an integer indicating the exact position of the node in the list.|
 |`get_siblings()`, `get_ancestors()` end ect. | Similar methods have parameters `include_self` and `depth` |• The `include_self` parameter specifies whether to include the node itself in the selection. <br> • The  `depth` parameter specifies the depth of the search. |
 |`move(target, pos)` metiod| The method `move()` has the name `move_to(target, position)` | - |
 

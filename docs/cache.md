@@ -116,6 +116,7 @@ treenode_cache.clear()
 This completely resets the cache, removing **all stored values**.
 
 Best Practices:
+
 - **Always use `generate_cache_key()`** instead of hardcoding cache keys to ensure consistency.
 - **Use `invalidate()` instead of `clear()`** when targeting a specific model’s cache.
 - **Apply `@cached_method` wisely**, ensuring it is used **only for** `TreeNodeModel`-based methods to avoid conflicts.
@@ -145,10 +146,12 @@ How it works:
 Each new entry initially goes into **FIFO**. If accessed **more than N times**, it moves to **LRU**, where it remains longer.
 
 **How N is determined:**
+
 - A threshold is set based on **mathematical statistics**: N = 1 / sqrt(2).
 - An absolute threshold limit is added.
 
 **LRU Behavior:**
+
 - When accessed, a record moves to the top of the list.
 - New records are also placed at the top.
 - If LRU reaches capacity, **the evicted record returns to FIFO** instead of being deleted.
@@ -162,11 +165,13 @@ When data is modified or deleted, the cache **automatically resets** to prevent 
 To automatically clear outdated records, an **adaptive mechanism** is used. Instead of a static TTL, the **DTT parameter** is dynamically calculated based on **Poisson distribution**.
 
 How DTT is calculated:
+
 1. Compute the **average interval between queries (T)**: ``` T = (1/N) * Σ (t_i - t_(i-1)), i=1...N```
 2. Store **averaged value** `ΣΔt / N`
 3. Set **DTT = 3T**, which removes **95% of infrequent queries**.
 
 **Why this is better than a fixed TTL:**
+
 - If queries are rare → DTT **increases**, preventing premature deletions.
 - If queries are frequent → DTT **decreases**, accelerating cache clearing.
 
