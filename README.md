@@ -74,7 +74,7 @@ python manage.py migrate
 ```
 
 ## Documentation
-Full documentation is available at [this link](https://django-fast-treenode.readthedocs.io/).
+Full documentation is available at **[ReadTheDocs](https://django-fast-treenode.readthedocs.io/)**.
 
 Quick access links:
 * [Installation, configuration and fine tuning](https://django-fast-treenode.readthedocs.io/installation/)

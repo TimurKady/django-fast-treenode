@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-fast-treenode"
-version = "2.1.1"
+version = "2.1.2"
 description = "Application for supporting tree (hierarchical) data structure in Django projects"
 readme = "README.md"
 authors = [{ name = "Timur Kady", email = "timurkady@yandex.com" }]
@@ -45,6 +45,6 @@ import_export = [
 
 [project.urls]
 Homepage = "https://github.com/TimurKady/django-fast-treenode"
-Documentation = "https://django-fast-treenode.readthedocs.io/latest/"
+Documentation = "https://django-fast-treenode.readthedocs.io/"
 Source = "https://github.com/TimurKady/django-fast-treenode"
 Issues = "https://github.com/TimurKady/django-fast-treenode/issues"
