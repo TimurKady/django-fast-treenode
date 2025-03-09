@@ -28,4 +28,4 @@ jobs:
       - name: Run Django tests
         env:
           DJANGO_SETTINGS_MODULE: tests.settings
-        run: python manage.py test
+        run: python tests/manage.py test
