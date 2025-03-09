@@ -24,8 +24,9 @@ nav:
       - Model Inheritance & Extensions: models.md
       - API Reference: api.md
       - Working with Admin Classes: admin.md
-  - Caching: cache.md
-  - Import & Export: import_export.md
+  - Misc:
+      - Caching: cache.md
+      - Import & Export: import_export.md
   - Roadmap: roadmap.md
 
 markdown_extensions:
