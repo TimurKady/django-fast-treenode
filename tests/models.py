@@ -1,3 +1,4 @@
+from django.db import models
 from treenode.models import TreeNodeModel
 
 
