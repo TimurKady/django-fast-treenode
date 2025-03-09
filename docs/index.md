@@ -16,14 +16,17 @@ The package is particularly useful in scenarios such as:
 ## Key Features
 
 1. **Efficient Tree Operations**
+
   * Supports fast retrieval of ancestors, descendants, and siblings.
   * Uses a **closure table approach** for optimal query performance.
 
 2.  **Django ORM Integration**
+
   * Extends Django’s `models.Model`, making it easy to integrate into existing applications.
   * Custom manager (`TreeNodeManager`) provides useful tree-related query optimizations.
 
 3. **Admin Interface Enhancements**
+
   * Supports multiple tree display modes in the Django Admin:
     * **Indentation mode** (classic hierarchical view)
     * **Breadcrumbs mode** (for easy navigation)
@@ -31,14 +34,17 @@ The package is particularly useful in scenarios such as:
   * Uses a **custom admin widget** (`TreeWidget`) to enhance usability.
 
 4. **Automatic Ordering and Priority Management**
+
   * Nodes can be assigned priority values for custom sorting.
   * Provides automatic ordering based on a **materialized path**.
 
 5. **Caching for Performance**
+
   * Uses Django’s caching framework to optimize frequently accessed tree operations.
   * Cached tree methods reduce redundant computations.
 
 6. **Bulk Operations Support**
+
   * Implements efficient **bulk creation** of nodes.
   * Provides methods for **batch updates** and **tree rebuilding**.
 
