@@ -5,8 +5,13 @@ import traceback
 from django.db import models
 from django.test import TestCase, TransactionTestCase
 from treenode.models import TreeNodeModel
+import tests.settings
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests.settings.py")
+sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
+if "DJANGO_SETTINGS_MODULE" not in os.environ:
+    os.environ["DJANGO_SETTINGS_MODULE"] = "tests.settings"
+
 django.setup()
 
 class TestModel(TreeNodeModel):
