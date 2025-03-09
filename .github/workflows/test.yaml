@@ -30,5 +30,4 @@ jobs:
         env:
           DJANGO_SETTINGS_MODULE: tests.settings
         run:
-          cd $(git rev-parse --show-toplevel)
           python tests/manage.py test
