@@ -3,9 +3,7 @@ The latest version provides optimized database operations, an improved caching m
 
 But the **django-fast-treenode** package will continue to evolve from its original concept—combining the benefits of the **Adjacency List** and **Closure Table** models—into a high-performance solution for managing and visualizing hierarchical data in Django projects. The focus is on **speed, usability, and flexibility**.
 
-In future versions, I plan to implement:
-
-### **Version 2.1 – Compatibility and Optimization** ()
+### **Version 2.1 – Compatibility and Optimization** (completed)
 Reducing dependencies and simplifying migration from other libraries.
 
 - **Expanding functionality** to simplify migration from other tree packages.
@@ -14,6 +12,8 @@ Reducing dependencies and simplifying migration from other libraries.
 - **Reducing database load** from the `TreeNodeAdmin` when working with large trees.
 - Removing `numpy` in favor of lighter alternatives.
 - Removing `Select2` in favor of light custom select2-like implementation.
+
+In future versions, I plan to implement:
 
 ### **Version 2.2 – Caching Improvements**
 Speeding up tree operations and reducing database load.
