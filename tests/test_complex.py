@@ -6,7 +6,7 @@ from django.db import models
 from django.test import TestCase, TransactionTestCase
 from treenode.models import TreeNodeModel
 
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "settings.py")
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "tests/settings.py")
 django.setup()
 
 class TestModel(TreeNodeModel):
