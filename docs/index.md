@@ -15,7 +15,7 @@ The package is particularly useful in scenarios such as:
 - **Geographical data**: Represent administrative divisions, regions, and areas of influence.
 - **Organizational and Business Structures**: Model company hierarchies, business processes, employees and departments.
 
-In all applications, `django-fast-treenode` models show excellent **performance** and **stability**.
+**django-fast-treenode** models show excellent **performance** and **stability** in all applications.
 
 ## Key Features
 
