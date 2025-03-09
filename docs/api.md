@@ -202,10 +202,10 @@ obj.get_family()
 ### Node Utility Methods
 This set of methods helps manage node-related operations such as:
 
-- **Breadcrumbs generation**
-- **Depth, index, and level calculations**
-- **Materialized path retrieval for sorting**
-- **Dynamic node positioning within the tree** 
+- Breadcrumbs generation
+- Depth, index, and level calculations
+- Materialized path retrieval for sorting
+- Dynamic node positioning within the tree 
 
 #### get_breadcrumbs
 Returns the **breadcrumbs** to current node (included):
@@ -271,6 +271,7 @@ Moves the model instance relative to the target node and sets its position (if n
 obj.move_to(target, position=0)
 ```
 Parameters:
+
 - `target`: еhe target node relative to which this node will be placed.
 - `position` – the position, relative to the target node, where the current node object will be moved to. For detals see [insert_at](#insert_at) method.
 
