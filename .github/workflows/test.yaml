@@ -29,4 +29,6 @@ jobs:
       - name: Run Django tests
         env:
           DJANGO_SETTINGS_MODULE: tests.settings
-        run: python tests/manage.py test
+        run:
+          cd $(git rev-parse --show-toplevel)
+          python tests/manage.py test
