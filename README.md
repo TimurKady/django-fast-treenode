@@ -1,6 +1,17 @@
 # Django-fast-treenode 
 **Combining Adjacency List and Closure Table for Optimal Performance**
 
+|tests| |docs| |pypi|
+
+.. |tests| image:: https://github.com/TimurKady/django-fast-treenode/actions/workflows/test.yaml/badge.svg?branch=main
+   :target: https://github.com/TimurKady/django-fast-treenode/actions/workflows/test.yaml
+
+.. |docs| image:: https://readthedocs.org/projects/django-fast-treenode/badge/?version=latest
+   :target: https://django-fast-treenode.readthedocs.io/en/latest/
+
+.. |pypi| image:: https://img.shields.io/pypi/v/django-fast-treenode.svg
+   :target: https://pypi.org/project/django-fast-treenode/
+
 **Django Fast TreeNode** is a high-performance Django application for working with tree structures, combining **Adjacency List** and **Closure Table** models. Each **TreeNodeModel** instance maintains two synchronized tables, enabling most operations to be performed with a single database query.
 
 ## Features
