@@ -270,10 +270,11 @@ Moves the model instance relative to the target node and sets its position (if n
 ```python
 obj.move_to(target, position=0)
 ```
+
 Parameters:
 
-- `target`: еhe target node relative to which this node will be placed.
-- `position` – the position, relative to the target node, where the current node object will be moved to. For detals see [insert_at](#insert_at) method.
+- `target`: the target node relative to which this node will be placed.
+- `position`: the position, relative to the target node, where the current node object will be moved to. For detals see [insert_at](#insert_at) method.
 
 #### get_path
 Returns Materialized Path of node. The materialized path is constructed by recording the position of each node within its parent's list of children, tracing this sequence back through all its ancestors.
