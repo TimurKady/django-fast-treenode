@@ -44,10 +44,11 @@ The search bar helps quickly locate nodes within large trees. As you type, **an 
 
 #### Using TreeNodeForm
 If you need to customize forms for tree-based models, inherit from `TreeNodeForm`. It provides:
+
 - A **custom tree widget** for selecting parent nodes.
 - Automatic **exclusion of self and descendants** from the parent selection to prevent circular references.
 
-##### `forms.py`:
+##### forms.py:
 ```python
 from treenode.forms import TreeNodeForm
 from .models import Category
@@ -77,7 +78,7 @@ This method ensures that the form correctly associates with different tree model
 #### The TreeWidget Class
 The `TreeWidget` class is a **custom Select2-like widget** that enables hierarchical selection in forms. While it is used inside the Django admin panel by default, it can **also be used in regular forms** outside the admin panel.
 
-##### `widgets.py`
+##### widgets.py
 
 ```python
 from django import forms
