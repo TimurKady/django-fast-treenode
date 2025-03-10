@@ -23,7 +23,7 @@ class TreeNodeNodeMixin(models.Model):
         abstract = True
 
     @cached_method
-    def get_breadcrumbs(self, attr='pk'):
+    def get_breadcrumbs(self, attr='id'):
         """Optimized breadcrumbs retrieval with direct cache check."""
         try:
             self._meta.get_field(attr)
