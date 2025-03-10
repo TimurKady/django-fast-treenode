@@ -25,6 +25,7 @@ class CategoryAdmin(TreeNodeModelAdmin):
 The tree structure in the admin panel **loads dynamically as nodes are expanded**. This allows handling **large datasets** efficiently, preventing performance issues.
 
 You can choose from three display modes:
+
 - **`TREENODE_DISPLAY_MODE_ACCORDION` (default)**  
   Expands/collapses nodes dynamically.
 - **`TREENODE_DISPLAY_MODE_BREADCRUMBS`**  
@@ -59,6 +60,7 @@ class CategoryForm(TreeNodeForm):
 ```
 
 Key Considerations:
+
 - This form automatically ensures that **a node cannot be its own parent**.
 - It uses **`TreeWidget`**, a custom hierarchical dropdown for selecting parent nodes.
 - If you need a form for another tree-based model, use the **dynamic factory method**:
@@ -91,6 +93,7 @@ class CategorySelectionForm(forms.Form):
 ```
 
 Important Notes:
+
 - **Requires jQuery**: The widget relies on AJAX requests, so ensure jQuery is available when using it outside Django’s admin.
 - **Dynamically Fetches Data**: It loads the tree structure asynchronously, preventing performance issues with large datasets.
 - **Customizable Data Source**: The `data-url` attribute can be adjusted to fetch tree data from a custom endpoint.
