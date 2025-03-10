@@ -17,7 +17,7 @@ Reducing dependencies and simplifying migration from other libraries.
 ### Planned Roadmap for Future Versions
 The **django-fast-treenode** package will continue to evolve from its original concept—combining the benefits of the **Adjacency List** and **Closure Table** models—into a high-performance solution for managing and visualizing hierarchical data in Django projects. The focus is on **speed, usability, and flexibility**.
 
-#### Version 2.3 – Performance Enhancements
+#### Version 2.2 – Performance Enhancements
 Focusing on optimizing query efficiency, reducing database load, and improving API interactions.
 
 - **Optimized Query Execution**: Minimize query overhead by restructuring SQL operations, reducing redundant lookups, and introducing batched operations for bulk inserts.
@@ -25,7 +25,7 @@ Focusing on optimizing query efficiency, reducing database load, and improving A
 - **Efficient Serialization**: Develop a lightweight tree serialization format optimized for API responses, reducing payload size while preserving structural integrity.
 - **Advanced Node Filtering & Search**: Implement AJAX-based filtering and search mechanisms in Django Admin and API endpoints to enhance usability and response time.
 
-#### Version 2.4 – Drag-and-Drop and Admin UI Improvements
+#### Version 2.3 – Drag-and-Drop and Admin UI Improvements
 Improving the usability and management of hierarchical structures in Django Admin.
 
 - **Drag-and-Drop Node Reordering**: Introduce interactive drag-and-drop functionality for reordering nodes within the tree structure directly in Django Admin.
