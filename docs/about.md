@@ -13,6 +13,7 @@ That is, an excellent debut idea, in my humble opinion, should have been improve
 
 ### The Development of the Idea
 My idea was to solve these problems by combining the **Adjacency List** with the **Closure Table**. Main advantages:
+
 * the Closure Model is generated automatically;
 * maintained compatibility with the original package at the level of documented functions;
 * most requests are satisfied in one call to the database;
@@ -26,6 +27,7 @@ Of course, at large levels of nesting, the use of the Closure Table leads to an 
 
 ### The Theory
 You can get a basic understanding of what is a **Closure Table** from:
+
 * [presentation](https://www.slideshare.net/billkarwin/models-for-hierarchical-data) by **Bill Karwin**;
 * [article](https://dirtsimple.org/2010/11/simplest-way-to-do-tree-based-queries.html) by blogger **Dirt Simple**;
 * [article](https://towardsdatascience.com/closure-table-pattern-to-model-hierarchies-in-nosql-c1be6a87e05b) by **Andriy Zabavskyy**.

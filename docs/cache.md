@@ -139,6 +139,7 @@ The cache is now divided into two queues:
 - **LRU (20%-30%)** – for frequently accessed objects (Least Recently Used).
 
 How it works:
+
 - If tree queries are evenly distributed, the cache behaves like a standard FIFO.
 - If certain nodes receive frequent queries, those records automatically move to LRU, reducing database load.
 
