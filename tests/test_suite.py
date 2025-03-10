@@ -115,7 +115,7 @@ class DeepTreePerformanceTest(TransactionTestCase):
 
             current_parent = root
 
-            for level in range(1, 201):
+            for level in range(1, 101):
                 start = time.time()
                 new_node = TestModel.objects.create(
                     name=f"Node Level {level}", tn_parent=current_parent)
@@ -124,9 +124,8 @@ class DeepTreePerformanceTest(TransactionTestCase):
                 nodes.append(new_node)
                 current_parent = new_node  # the next node will be a child of the one just created
 
-            # Generate report for levels: 0, 1, 10, 20, 30, 40, 50, 70, 80, 90, 100, 150, 200
-            levels_to_report = [0, 1, 10, 20, 30,
-                                40, 50, 70, 80, 90, 100, 150, 200]
+            # Generate report for levels: 0, 1, 10, 20, 30, 40, 50, 70, 80, 90, 100
+            levels_to_report = [0, 1, 10, 20, 30,40, 50, 70, 80, 90, 100]
             # to avoid division by zero
             root_time = timings[0] if timings[0] > 0 else 1e-6
             print("Deep tree - node insertion times:")

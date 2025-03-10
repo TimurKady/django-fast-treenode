@@ -3,3 +3,4 @@ include README.md
 recursive-include treenode/static *
 recursive-include treenode/templates *
 recursive-include docs *
+

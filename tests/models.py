@@ -11,6 +11,4 @@ class TestModel(TreeNodeModel):
     class Meta:
         verbose_name = "TestModel"
 
-    def __str__(self):
-        return self.name
 

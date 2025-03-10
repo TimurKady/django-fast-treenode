@@ -12,7 +12,7 @@ Features:
 - Automatic cache eviction when memory limits are exceeded.
 - Decorator `@cached_method` for caching method results.
 
-Version: 2.0.0
+Version: 2.1.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """

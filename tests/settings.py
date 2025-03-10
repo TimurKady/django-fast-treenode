@@ -40,3 +40,5 @@ TREENODE_CACHE_LIMIT = 100  # Оптимизация кеша дерева
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_TZ = True
+
+
