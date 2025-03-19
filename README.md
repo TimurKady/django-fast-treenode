@@ -10,7 +10,7 @@
 **Django Fast TreeNode** is a high-performance Django application for working with tree structures. 
 
 ## Features
-- **Hybrid storage model**: Combines Adjacency List and Materialized Path (versions 2.2 and above) Closure Table (versions 2.1 and earlier) for optimal performance.
+- **Hybrid storage model**: Combines Adjacency List and Closure Table for optimal performance.
 - **Custom caching system**: A built-in caching mechanism, specifically designed for this package, significantly boosts execution speed.
 - **Efficient queries**: Retrieve ancestors, descendants, breadcrumbs, and tree depth with only one SQL queriy.
 - **Bulk operations**: Supports fast insertion, movement, and deletion of nodes.
@@ -28,7 +28,6 @@ Django Fast TreeNode is suitable for a wide range of applications, from simple d
 - **Geographical data**: Represent administrative divisions, regions, and areas of influence.
 - **Organizational and Business Structures**: Model company hierarchies, business processes, employees and departments.
 
-In all applications, `django-fast-treenode` models show excellent performance and stability.
 
 ## Quick start
 1. Run `pip install django-fast-treenode`.
