@@ -74,8 +74,6 @@ class TreeNodeModel(
 
         abstract = True
         indexes = [
-            models.Index(fields=["tn_parent"]),
-            models.Index(fields=["tn_parent", "id"]),
             models.Index(fields=["tn_parent", "tn_priority"]),
         ]
 
@@ -151,43 +149,45 @@ class TreeNodeModel(
             using=self._state.db,
             update_fields=kwargs.get("update_fields", None)
         )
+        with transaction.atomic():
+            # If the object already exists, get the old parent and priority
+            # values
+            is_new = self.pk is None
+            if not is_new:
+                old_parent, old_priority = model.objects\
+                    .filter(pk=self.pk)\
+                    .values_list('tn_parent', 'tn_priority')\
+                    .first()
+                is_move = (old_priority != self.tn_priority)
+            else:
+                force_insert = True
+                is_move = False
+                old_parent = None
 
-        # If the object already exists, get the old parent and priority values
-        is_new = self.pk is None
-        if not is_new:
-            old_parent, old_priority = model.objects\
-                .filter(pk=self.pk)\
-                .values_list('tn_parent', 'tn_priority')\
-                .first()
-            is_move = (old_priority != self.tn_priority)
-        else:
-            force_insert = True
-            is_move = False
-            old_parent = None
+            descendants = self.get_descendants(include_self=True)
 
-        # Check if we are trying to move a node to a child
-        if old_parent and old_parent != self.tn_parent and self.tn_parent:
-            # Get pk of children via values_list to avoid creating full
-            # set of objects
-            if self.tn_parent.pk in self.get_descendants_pks():
-                raise ValueError("You cannot move a node into its own child.")
+            # Check if we are trying to move a node to a child
+            if old_parent and old_parent != self.tn_parent and self.tn_parent:
+                # Get pk of children via values_list to avoid creating full
+                # set of objects
+                if self.tn_parent in descendants:
+                    raise ValueError(
+                        "You cannot move a node into its own child."
+                    )
 
-        # Save the object and synchronize with the closing table
-        # Disable signals
-        with (disable_signals(pre_save, model),
-              disable_signals(post_save, model)):
+            # Save the object and synchronize with the closing table
+            # Disable signals
+            with (disable_signals(pre_save, model),
+                  disable_signals(post_save, model)):
 
-            if is_new or is_move:
-                self._update_priority()
-            super().save(force_insert=force_insert, *args, **kwargs)
-            # Run synchronize
-            if is_new:
-                self.closure_model.insert_node(self)
-            elif is_move:
-                subtree_nodes = self.get_descendants(include_self=True)
-                self.closure_model.move_node(subtree_nodes)
-            # Update priorities among neighbors or clear cache if there was
-            # no movement
+                if is_new or is_move:
+                    self._update_priority()
+                super().save(force_insert=force_insert, *args, **kwargs)
+                # Run synchronize
+                if is_new:
+                    self.closure_model.insert_node(self)
+                elif is_move:
+                    self.closure_model.move_node(descendants)
 
         # Clear model cache
         model.clear_cache()
@@ -203,7 +203,7 @@ class TreeNodeModel(
 
     def _update_priority(self):
         """Update tn_priority field for siblings."""
-        siblings = self.get_siblings()
+        siblings = self.get_siblings(include_self=False)
         siblings = sorted(siblings, key=lambda x: x.tn_priority)
         insert_pos = min(self.tn_priority, len(siblings))
         siblings.insert(insert_pos, self)
@@ -214,7 +214,6 @@ class TreeNodeModel(
         # Save changes
         model = self._meta.model
         model.objects.bulk_update(siblings, ['tn_priority'])
-        model.clear_cache()
 
     @classmethod
     def _get_place(cls, target, position=0):

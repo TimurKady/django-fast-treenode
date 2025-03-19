@@ -2,7 +2,7 @@
 """
 TreeNode Node Mixin
 
-Version: 2.1.0
+Version: 2.1.3
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -25,30 +25,14 @@ class TreeNodeNodeMixin(models.Model):
     @cached_method
     def get_breadcrumbs(self, attr='id'):
         """Optimized breadcrumbs retrieval with direct cache check."""
+
         try:
             self._meta.get_field(attr)
         except FieldDoesNotExist:
             raise ValueError(f"Invalid attribute name: {attr}")
 
-        # Easy logics for roots
-        if self.tn_parent is None:
-            return [getattr(self, attr)]
-
-        # Generate parents cache key
-        cache_key = treenode_cache.generate_cache_key(
-            self._meta.label,
-            self.get_breadcrumbs.__name__,
-            self.tn_parent.pk,
-            attr
-        )
-
-        # Try get value from cache
-        breadcrumbs = treenode_cache.get(cache_key)
-        if breadcrumbs is not None:
-            return breadcrumbs + [getattr(self, attr)]
-
-        queryset = self.get_ancestors_queryset(include_self=True).only(attr)
-        return [getattr(item, attr) for item in queryset]
+        ancestors = self.get_ancestors(include_self=True)
+        return [getattr(node, attr) for node in ancestors]
 
     @cached_method
     def get_depth(self):

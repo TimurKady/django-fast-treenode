@@ -62,7 +62,8 @@ class ClosureModel(models.Model):
         unique_together = (("parent", "child"),)
         indexes = [
             models.Index(fields=["parent", "child"]),
-            models.Index(fields=["child", "parent"]),
+            models.Index(fields=["parent", "depth"]),
+            models.Index(fields=["child", "depth"]),
             models.Index(fields=["parent", "child", "depth"]),
         ]
 
@@ -71,28 +72,6 @@ class ClosureModel(models.Model):
         return f"{self.parent} — {self.child} — {self.depth}"
 
     # ----------- Methods of working with tree structure ----------- #
-
-    @classmethod
-    def get_ancestors_pks(cls, node, include_self=True, depth=None):
-        """Get the ancestors pks list."""
-        options = dict(child_id=node.pk, depth__gte=0 if include_self else 1)
-        if depth:
-            options["depth__lte"] = depth
-        queryset = cls.objects.filter(**options)\
-            .order_by('depth')\
-            .values_list('parent_id', flat=True)
-        return list(queryset.values_list("parent_id", flat=True))
-
-    @classmethod
-    def get_descendants_pks(cls, node, include_self=False, depth=None):
-        """Get a list containing all descendants."""
-        options = dict(parent_id=node.pk, depth__gte=0 if include_self else 1)
-        if depth:
-            options.update({'depth__lte': depth})
-        queryset = cls.objects.filter(**options)\
-            .order_by('depth')\
-            .values_list('child_id', flat=True)
-        return queryset
 
     @classmethod
     def get_root(cls, node):

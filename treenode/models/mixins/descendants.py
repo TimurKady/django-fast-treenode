@@ -8,6 +8,8 @@ Email: timurkady@yandex.com
 """
 
 from django.db import models
+from django.db.models import OuterRef, Subquery, Min
+
 from treenode.cache import treenode_cache, cached_method
 
 
@@ -22,37 +24,29 @@ class TreeNodeDescendantsMixin(models.Model):
     @cached_method
     def get_descendants_queryset(self, include_self=False, depth=None):
         """Get the descendants queryset."""
-        queryset = self._meta.model.objects\
-            .annotate(min_depth=models.Min("parents_set__depth"))\
-            .filter(parents_set__parent=self.pk)
+        Closure = self.closure_model
+        desc_qs = Closure.objects.filter(child=OuterRef('pk'), parent=self.pk)
+        desc_qs = desc_qs.values('child').annotate(
+            mdepth=Min('depth')).values('mdepth')[:1]
+
+        queryset = self._meta.model.objects.annotate(
+            min_depth=Subquery(desc_qs)
+        ).filter(min_depth__isnull=False)
 
         if depth is not None:
             queryset = queryset.filter(min_depth__lte=depth)
-        if include_self and not queryset.filter(pk=self.pk).exists():
+
+        # add self if needed
+        if include_self:
             queryset = queryset | self._meta.model.objects.filter(pk=self.pk)
 
-        return queryset.order_by("min_depth", "tn_priority")
+        return queryset.order_by('min_depth', 'tn_priority')
 
     @cached_method
     def get_descendants_pks(self, include_self=False, depth=None):
         """Get the descendants pks list."""
-        cache_key = treenode_cache.generate_cache_key(
-            label=self._meta.label,
-            func_name=getattr(self, "get_descendants_queryset").__name__,
-            unique_id=self.pk,
-            arg={
-                "include_self": include_self,
-                "depth": depth
-            }
-        )
-        queryset = treenode_cache.get(cache_key)
-        if queryset is not None:
-            return list(queryset.values_list("id", flat=True))
-        elif hasattr(self, "closure_model"):
-            return self.closure_model.get_descendants_pks(
-                self, include_self, depth
-            )
-        return []
+        return self.get_descendants_queryset(include_self, depth)\
+            .values_list("id", flat=True)
 
     def get_descendants(self, include_self=False, depth=None):
         """Get a list containing all descendants."""

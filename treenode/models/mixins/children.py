@@ -60,7 +60,8 @@ class TreeNodeChildrenMixin(models.Model):
     @cached_method
     def get_children_queryset(self):
         """Get the children queryset with prefetch."""
-        return self.tn_children.prefetch_related('tn_children')
+        # return self.tn_children.prefetch_related('tn_children')
+	return self._meta.model.objects.filter(tn_parent__pk=self.id)
 
     def get_children(self):
         """Get a list containing all children."""

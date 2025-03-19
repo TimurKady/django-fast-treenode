@@ -45,25 +45,25 @@ class TreeNodeSiblingsMixin(models.Model):
         return instance
 
     @cached_method
-    def get_siblings_queryset(self):
+    def get_siblings_queryset(self, include_self=True):
         """Get the siblings queryset with prefetch."""
         if self.tn_parent:
-            qs = self.tn_parent.tn_children.prefetch_related('tn_children')
+            qs = self._meta.model.objects.filter(tn_parent=self.tn_parent)
         else:
             qs = self._meta.model.objects.filter(tn_parent__isnull=True)
-        return qs.exclude(pk=self.pk)
+        return qs if include_self else qs.exclude(pk=self.pk)
 
-    def get_siblings(self):
+    def get_siblings(self, include_self=True):
         """Get a list with all the siblings."""
         return list(self.get_siblings_queryset())
 
-    def get_siblings_count(self):
+    def get_siblings_count(self, include_self=True):
         """Get the siblings count."""
-        return self.get_siblings_queryset().count()
+        return self.get_siblings_queryset(include_self).count()
 
-    def get_siblings_pks(self):
+    def get_siblings_pks(self, include_self=True):
         """Get the siblings pks list."""
-        return [item.pk for item in self.get_siblings_queryset()]
+        return [item.pk for item in self.get_siblings_queryset(include_self)]
 
     def get_first_sibling(self):
         """

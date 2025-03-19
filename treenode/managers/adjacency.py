@@ -14,6 +14,7 @@ Email: timurkady@yandex.com
 from collections import deque, defaultdict
 from django.db import models, transaction
 from django.db import connection
+from django.db.models import F
 
 
 class TreeNodeQuerySet(models.QuerySet):
@@ -137,10 +138,11 @@ class TreeNodeModelManager(models.Manager):
 
     def get_queryset(self):
         """Return a sorted QuerySet."""
-        queryset = TreeNodeQuerySet(self.model, using=self._db)\
-            .annotate(_depth_db=models.Max("parents_set__depth"))\
-            .order_by("_depth_db", "tn_parent", "tn_priority")
-        return queryset
+        return TreeNodeQuerySet(self.model, using=self._db)\
+            .order_by(
+                # F('tn_parent').asc(nulls_first=True),
+                'tn_parent', 'tn_priority'
+        )
 
     # Service methods -------------------
 
