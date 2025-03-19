@@ -1,3 +1,4 @@
 pytest
 pytest-django
 Django>=4.2
+msgpack
