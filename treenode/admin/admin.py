@@ -29,7 +29,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class TreeNodeAdminModel(AdminMixin, admin.ModelAdmin):
+class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
     """
     TreeNodeAdmin class.
 

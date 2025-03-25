@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from .admin import TreeNodeAdminModel
+from .admin import TreeNodeModelAdmin
 
 
-__all__ = ["TreeNodeAdminModel"]
+__all__ = ["TreeNodeModelAdmin"]
 
 
 # The end

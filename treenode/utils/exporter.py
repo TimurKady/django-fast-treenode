@@ -12,7 +12,7 @@ Features:
 - Provides optimized data extraction for QuerySets.
 - Generates downloadable files with appropriate HTTP responses.
 
-Version: 2.0.11
+Version: 3.0.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
