@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 def create_indexes(model):
     """Create indexes for the descendants of TreeNodeModel."""
     vendor = connection.vendor
-    sender = "Django Fast TeeNode"
+    sender = "Django Fast TreeNode"
     table = model._meta.db_table
 
     with connection.cursor() as cursor:
