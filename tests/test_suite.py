@@ -3,7 +3,8 @@
 Automated tests for TreeNodeModel.
 """
 
-import unittest
+
+from django.test import TestCase
 from django.db import transaction
 from .models import TestModel
 
@@ -15,7 +16,7 @@ def _set_path(array):
     return '.'.join(f"{n:0{PATH_DIGITS}X}" for n in array)
 
 
-class TreeNodeModelTests(unittest.TestCase):
+class TreeNodeModelTests(TestCase):
     """Test cases for the TreeNodeModel behavior."""
 
     def setUp(self):
