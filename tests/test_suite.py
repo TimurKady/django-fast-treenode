@@ -18,7 +18,9 @@ class TreeNodeModelTests(TestCase):
         self.e = TestModel.objects.create(name="E", parent=self.b, priority=1)
 
         # Обновляем дерево
-        self.root.update_path(recursive=True)
+        path_a = self.a.get_order()
+        path_c = self.c.get_order()
+        self.root._update_path(None)
 
     def test_tree_operations(self):
         # Проверка целостности дерева

@@ -9,5 +9,4 @@ Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
-
 __version__ = '3.0.1'
