@@ -26,9 +26,17 @@ jobs:
           pip install --no-cache-dir -r tests/requirements.txt
           pip install git+https://github.com/TimurKady/django-fast-treenode.git
 
+      - name: Run migrations
+        env:
+          DJANGO_SETTINGS_MODULE: tests.settings
+          PYTHONPATH: .
+        run: |
+          python tests/manage.py makemigrations --noinput
+          python tests/manage.py migrate --noinput
+
       - name: Run Django tests
         env:
           DJANGO_SETTINGS_MODULE: tests.settings
           PYTHONPATH: .
-        run:
+        run: |
           python tests/manage.py test
