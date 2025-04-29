@@ -4,10 +4,10 @@ from .models import TestModel
 
 class TreeNodeModelTests(TestCase):
     def setUp(self):
-        # Cleaning the base
+        # Чистим базу
         TestModel.objects.all().delete()
 
-        # Building a tree by hand
+        # Строим дерево вручную
         self.root = TestModel.objects.create(name="root", priority=0)
         self.a = TestModel.objects.create(
             name="A", parent=self.root, priority=1)
@@ -17,19 +17,33 @@ class TreeNodeModelTests(TestCase):
         self.d = TestModel.objects.create(name="D", parent=self.a, priority=2)
         self.e = TestModel.objects.create(name="E", parent=self.b, priority=1)
 
-        # Обновляем дерево — вручную
+        # Обновляем дерево
         self.root.update_path(recursive=True)
 
     def test_tree_operations(self):
-        # Integrity check
+        # Проверка целостности дерева
         self.assertEqual(self.root.check_tree_integrity(verbose=False), [])
 
-        # Check get_descendant_pks
-        descendants = set(self.root.get_descendant_pks(include_self=False))
-        expected = {self.a.pk, self.b.pk, self.c.pk, self.d.pk, self.e.pk}
-        self.assertEqual(descendants, expected)
+        # Проверка получения потомков
+        descendant_names = TestModel.objects.filter(
+            pk__in=self.root.get_descendant_pks(include_self=False)
+        ).values_list("name", flat=True)
 
-        # Check serialization/deserialization
+        self.assertEqual(set(descendant_names), {"A", "B", "C", "D", "E"})
+
+        # Сериализация
         tree_data = TestModel.get_tree_json()
+
+        # Удаляем всё и восстанавливаем дерево
         TestModel.objects.all().delete()
         TestModel.load_tree(tree_data)
+
+        # Проверка целостности после восстановления
+        new_root = TestModel.objects.get(name="root")
+        self.assertEqual(new_root.check_tree_integrity(verbose=False), [])
+
+        restored_names = TestModel.objects.filter(
+            pk__in=new_root.get_descendant_pks(include_self=False)
+        ).values_list("name", flat=True)
+
+        self.assertEqual(set(restored_names), {"A", "B", "C", "D", "E"})
