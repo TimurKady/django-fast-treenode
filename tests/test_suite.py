@@ -28,7 +28,7 @@ class TreeNodeModelTests(TestCase):
 
         # Проверка получения потомков
         descendant_names = TestModel.objects.filter(
-            pk__in=self.root.get_descendant_pks(include_self=False)
+            pk__in=self.root.get_descendants_pks(include_self=False)
         ).values_list("name", flat=True)
 
         self.assertEqual(set(descendant_names), {"A", "B", "C", "D", "E"})
@@ -45,7 +45,7 @@ class TreeNodeModelTests(TestCase):
         self.assertEqual(new_root.check_tree_integrity(verbose=False), [])
 
         restored_names = TestModel.objects.filter(
-            pk__in=new_root.get_descendant_pks(include_self=False)
+            pk__in=new_root.get_descendants_pks(include_self=False)
         ).values_list("name", flat=True)
 
         self.assertEqual(set(restored_names), {"A", "B", "C", "D", "E"})
