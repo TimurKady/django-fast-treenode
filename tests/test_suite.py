@@ -5,7 +5,7 @@ Automated tests for TreeNodeModel.
 
 import unittest
 from django.db import transaction
-from supertree.models import TestNode  # путь поправь, если нужно
+from .models import TestNode
 
 PATH_DIGITS = 3
 
