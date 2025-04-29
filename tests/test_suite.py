@@ -20,20 +20,20 @@ class TreeNodeModelTests(unittest.TestCase):
 
     def setUp(self):
         # Чистим таблицу перед каждым тестом
-        TestNode.objects.all().delete()
+        TestModel.objects.all().delete()
 
     @transaction.atomic
     def test_tree_operations(self):
         """Main test covering tree creation, move, and serialization."""
 
         # 1️⃣ Create a test tree
-        root = TestNode.objects.create(name="root", priority=0)
-        node_a = TestNode.objects.create(name="A", parent=root, priority=1)
-        node_b = TestNode.objects.create(name="B", parent=root, priority=2)
-        node_c = TestNode.objects.create(name="C", parent=node_a, priority=1)
-        node_d = TestNode.objects.create(name="D", parent=node_a, priority=2)
+        root = TestModel.objects.create(name="root", priority=0)
+        node_a = TestModel.objects.create(name="A", parent=root, priority=1)
+        node_b = TestModel.objects.create(name="B", parent=root, priority=2)
+        node_c = TestModel.objects.create(name="C", parent=node_a, priority=1)
+        node_d = TestModel.objects.create(name="D", parent=node_a, priority=2)
 
-        self.assertEqual(TestNode.objects.count(), 5)
+        self.assertEqual(TestModel.objects.count(), 5)
 
         # 2️⃣ Check the saving of `_path`
         path_a = node_a.get_order()
@@ -63,29 +63,29 @@ class TreeNodeModelTests(unittest.TestCase):
 
         # 5️⃣ Check deletion
         node_a.delete()
-        self.assertFalse(TestNode.objects.filter(pk=node_a.pk).exists())
-        self.assertTrue(TestNode.objects.filter(pk=node_c.pk).exists())
+        self.assertFalse(TestModel.objects.filter(pk=node_a.pk).exists())
+        self.assertTrue(TestModel.objects.filter(pk=node_c.pk).exists())
 
         # 6️⃣ Check save and load operations
-        TestNode.objects.all().delete()
-        self.assertFalse(TestNode.objects.exists())
+        TestModel.objects.all().delete()
+        self.assertFalse(TestModel.objects.exists())
 
         # Recreate the tree
-        root = TestNode.objects.create(name="root", priority=0)
-        node_a = TestNode.objects.create(name="A", parent=root, priority=1)
-        node_b = TestNode.objects.create(name="B", parent=root, priority=2)
-        node_c = TestNode.objects.create(name="C", parent=node_a, priority=1)
-        node_d = TestNode.objects.create(name="D", parent=node_a, priority=2)
+        root = TestModel.objects.create(name="root", priority=0)
+        node_a = TestModel.objects.create(name="A", parent=root, priority=1)
+        node_b = TestModel.objects.create(name="B", parent=root, priority=2)
+        node_c = TestModel.objects.create(name="C", parent=node_a, priority=1)
+        node_d = TestModel.objects.create(name="D", parent=node_a, priority=2)
 
-        original_tree = TestNode.get_tree()
-        tree_json = TestNode.get_tree_json()
-        tree_data = TestNode.load_tree_json(tree_json)
+        original_tree = TestModel.get_tree()
+        tree_json = TestModel.get_tree_json()
+        tree_data = TestModel.load_tree_json(tree_json)
 
-        TestNode.objects.all().delete()
-        self.assertFalse(TestNode.objects.exists())
+        TestModel.objects.all().delete()
+        self.assertFalse(TestModel.objects.exists())
 
-        TestNode.load_tree(tree_data)
-        new_tree = TestNode.get_tree_json()
+        TestModel.load_tree(tree_data)
+        new_tree = TestModel.get_tree_json()
 
         # ✅ Checking the integrity of the tree after all operations
         self.assertEqual(root.check_tree_integrity(verbose=False), [])
