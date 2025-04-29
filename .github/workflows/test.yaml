@@ -32,6 +32,7 @@ jobs:
           DJANGO_SETTINGS_MODULE: tests.settings
           PYTHONPATH: .
         run: |
-          python tests/manage.py makemigrations tests --noinput
-          python tests/manage.py migrate --noinput
-          python tests/manage.py test
+          run: |
+            python tests/manage.py makemigrations tests --noinput
+            python tests/manage.py test
+
