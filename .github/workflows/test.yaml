@@ -11,6 +11,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repo
         uses: actions/checkout@v3
@@ -26,17 +27,11 @@ jobs:
           pip install --no-cache-dir -r tests/requirements.txt
           pip install git+https://github.com/TimurKady/django-fast-treenode.git
 
-      - name: Run migrations
+      - name: Run tests with migrations (single process)
         env:
           DJANGO_SETTINGS_MODULE: tests.settings
           PYTHONPATH: .
         run: |
-          python tests/manage.py makemigrations --noinput
+          python tests/manage.py makemigrations tests --noinput
           python tests/manage.py migrate --noinput
-
-      - name: Run Django tests
-        env:
-          DJANGO_SETTINGS_MODULE: tests.settings
-          PYTHONPATH: .
-        run: |
           python tests/manage.py test
