@@ -1,4 +1,4 @@
-# TreeNode Framework
+# Treenode Framework
 **A hybrid open-source framework for working with trees in Django**
 
 Welcome to the **django-fast-treenode** documentation!
