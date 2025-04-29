@@ -2,13 +2,23 @@
 """
 TreeNode Children Mixin
 
-Version: 2.1.0
+Version: 3.0.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
 from django.db import models
-from treenode.cache import cached_method
+from ...cache import cached_method
+
+
+'''
+try:
+    profile
+except NameError:
+    def profile(func):
+        """Profile."""
+        return func
+'''
 
 
 class TreeNodeChildrenMixin(models.Model):
@@ -36,47 +46,44 @@ class TreeNodeChildrenMixin(models.Model):
         Returns:
         The created node object. It will be save()d by this method.
         """
-        if isinstance(position, int):
-            priority = position
-            parent = self
-        else:
-            if position not in ['first-child', 'last-child', 'sorted-child']:
-                raise ValueError(f"Invalid position format: {position}")
-            parent, priority = self._meta.model._get_place(self, position)
-
         instance = kwargs.get("instance")
         if instance is None:
             instance = self._meta.model(**kwargs)
-        instance.tn_parent = parent
-        instance.tn_priority = priority
+
+        parent, priority = self._meta.model._get_place(self, position)
+
+        instance.parent = self
+        instance.priority = priority
         instance.save()
-        return instance
+
+    def get_children_queryset(self):
+        """Get the children queryset."""
+        return self._meta.model.objects.filter(parent_id=self.id)
+
+    @cached_method
+    def get_children(self):
+        """Get a list containing all children."""
+        queryset = self._meta.model.objects.filter(parent_id=self.id)
+        return list(queryset)
 
     @cached_method
     def get_children_pks(self):
         """Get the children pks list."""
-        return list(self.get_children_queryset().values_list("id", flat=True))
+        return self.query("children")
 
     @cached_method
-    def get_children_queryset(self):
-        """Get the children queryset with prefetch."""
-        # return self.tn_children.prefetch_related('tn_children')
-        return self._meta.model.objects.filter(tn_parent__pk=self.id)
-
-    def get_children(self):
-        """Get a list containing all children."""
-        return list(self.get_children_queryset())
-
     def get_children_count(self):
         """Get the children count."""
-        return len(self.get_children_pks())
+        return self.query(objects="children", mode='count')
 
+    @cached_method
     def get_first_child(self):
         """Get the first child node or None if it has no children."""
-        return self.get_children_queryset().first() if self.is_leaf else None
+        return self.get_children_queryset().first()
 
+    @cached_method
     def get_last_child(self):
         """Get the last child node or None if it has no children."""
-        return self.get_children_queryset().last() if self.is_leaf else None
+        return self.get_children_queryset().last()
 
 # The End

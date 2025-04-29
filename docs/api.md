@@ -15,7 +15,7 @@ The API is divided into several logical groups, each serving a specific purpose:
 - **[Sibling Methods](#sibling-methods)** – Handle relationships between sibling nodes.
 - **[Tree Methods](#tree-methods)** – Serialize and manipulate the entire tree structure, including JSON export/import.
 - **[Logical Methods](#logical-methods)** – Determine relationships between nodes (e.g., is ancestor, is sibling, is leaf).
-- **[Property Accessors](#property-accessors)** – Shortcut properties for commonly used methods like `parent`, `children`, `siblings`, `depth`, and `priority`.
+- **[Property Accessors](#property-accessors)** – Shortcut properties for commonly used methods.
 
 Each section below briefly describes the purpose of the respective method group.
 
@@ -38,6 +38,7 @@ For more information on caching, see [Caching and Cache Management](cache.md)
 
 #### delete
 **Delete a node** provides two deletion strategies:
+
 - **Cascade Delete (`cascade=True`)**: Removes the node along with all its descendants.
 - **Reparenting (`cascade=False`)**: Moves the children of the deleted node up one level in the hierarchy before removing the node itself.
 
@@ -83,6 +84,13 @@ Returns the **ancestors count**:
 ```python
 obj.get_ancestors_count(include_self=True, depth=None)
 ```
+
+#### get_common_ancestor
+Finds lowest common ancestor between self and other node.
+```python
+obj.get_common_ancestor(target)
+```
+Returns a list of pk objects
 
 ---
 
@@ -221,6 +229,13 @@ Returns the **node depth** (how deep is this level from the root of the tree; st
 obj.get_depth()
 ```
 
+#### distance_to
+Returns number of edges on shortest path between two nodes
+
+```python
+obj.distance_to(targer)
+```
+
 #### get_level
 Returns the **node level** (starting from 1):
 ```python
@@ -237,6 +252,13 @@ obj.get_order()
 Returns the **node index** (index in children list):
 ```python
 obj.get_index()
+```
+
+#### shortest_path
+Returns the shortest path betwin nodes. Returned value is list of pks from `source` to `destination`, going up to their lowest common ancestor (LCA), then down to `destination`.
+
+```python
+cls.shortest_path(source, destination)
 ```
 
 #### insert_at
@@ -258,9 +280,10 @@ Parameters:
     - `right-sibling`: the node will be moved to the position after the target node;
     - `last-sibling`: the node will be the new rightmost sibling of the target node;
     - `sorted-sibling`: the new node will be moved after sorting by the treenode_sort_field field;
-    - first-child: the node will be the first child of the target node;
-    - last-child: the node will be the new rightmost child of the target
-    - sorted-child: the new node will be moved after sorting by the treenode_sort_field field.
+    - `first-child`: the node will be the first child of the target node;
+    - `last-child`: the node will be the new rightmost child of the target
+    - `sorted-child`: the new node will be moved after sorting by the treenode_sort_field field.
+
 - `save` : if `save=true`, the node will be saved in the tree. Otherwise,  the method will return a model instance with updated fields: parent field and position in sibling list.
 
 Before using this method, the model instance must be correctly created with all required fields defined. If the model has required fields, then simply creating an object and calling insert_at() will not work, because Django will raise an exception.
@@ -382,6 +405,12 @@ Returns the last root node in the tree or `None` if it is empty.
 cls.get_last_root()
 ```
 
+#### sort_roots
+Sorts all nodes with `parent` is None. The new ordering is computed based on the model's sorting_field (defaulting to 'priority'). 
+```python
+cls.sort_roots()
+```
+
 ---
 
 ### Sibling Methods
@@ -468,16 +497,12 @@ These methods provide functionality for **serialization and manipulation of enti
 - Generating **annotated representations** for UI display
 - Rebuilding or deleting the entire tree structure
 
-#### dump_tree
-Return an **n-dimensional dictionary** representing the model tree.
-
+#### clone_subtree
+Clones self and entire subtree under given parent. Returns new root of the cloned subtree.
+Clones self and entire subtree under given parent. Returns new root of the cloned subtree.
 ```python
-cls.dump_tree(instance=None)
+obj.clone_subtree(parent=None)
 ```
-
-Introduced for compatibility with other packages. In reality, [`get_tree()`](#get_tree) method is used.
-
-This method is not recommended for use, as it **will be excluded in the future**.
 
 #### get_tree
 Return an **n-dimensional dictionary** representing the model tree.
@@ -511,15 +536,6 @@ Takes a JSON-compatible string and decodes it into a tree structure.
 ```python
 cls.load_tree_json(json_str)
 ```
-
-#### get_tree_display
-Returns a **multiline string representing** the model tree.
-
-```python
-cls.get_tree_display(instance=None, symbol="&mdash;")
-```
-
-Inserts an indentation proportional to the node depth, filling it with the value of the `symbol` parameter.
 
 #### get_tree_annotated
 Returns an **annotated list** from a tree branch.
@@ -570,6 +586,12 @@ cls.update_tree()
 
 ```python
 cls.delete_tree()
+```
+
+#### delete_forest
+Deletes the whole tree for the current node class.
+```python
+cls.delete_forest
 ```
 
 ---
@@ -689,14 +711,8 @@ Returns the last child node. See [`get_last_child()`](#get_last_child) method.
 #### obj.level
 Returns the node level. See [`get_level()`](#get_level) method.
 
-#### obj.parent
-Returns node parent. See [`get_patent()`](#get_patent) method.
-
 #### obj.parent_pk
 Returns node parent pk. See [`get_parent_pk()`](#get_parent_pk) method.
-
-#### obj.priority
-Returns node oder position (priority). See [`get_priority()`](#get_priority) method.
 
 #### cls.roots
 Returns a list with all root nodes. See [`get_roots()`](#get_roots) method.
@@ -719,26 +735,9 @@ Returns  the siblings pks list. See [`get_siblings_pks()`](#get_siblings_pks) me
 #### cls.tree
 Returns an n-dimensional dict representing the model tree. See [`get_tree()`](#get_tree) method.
 
-#### cls.tree_display
-Returns a multiline string representing the model tree. See [`get_tree_display()`](#get_tree_display) method.
-
-**Warning**: Use with caution! Will be changed in future versions.
-
-#### obj.tn_order
+#### obj.order
 Return the materialized path. See [`get_order()`](#get_order) method.
 
-**Warning**: Use with caution! Will be changed in future versions.
-
 ---
 
-### Excluded methods
-Some previously available methods have been replaced by new methods.
-
-| Obsolete method  | Desctiption | New implementation |
-| ------------ | ------------ | ------------ |
-| `get_descendants_tree()`  | Returns a **n-dimensional** `dict` representing the **model tree**  |  [`cls.get_tree(cls, instance=None)`](#get_tree) |
-| `get_descendants_tree_display()`  | Returns a a **multiline** `string` representing the **model tree** |  [`cls.get_tree_display(instance=None, symbol="&mdash;")`](#get_tree_display) |
-
----
-
-The `django-fast-treenode` API provides a **robust, well-optimized**, and **extensible** interface for hierarchical data management in Django. Whether you're working with **large datasets** or **migrating from another tree-based package**, the methods are designed to be flexible and efficient.
+The **Treenode Framework** API provides a **robust, well-optimized**, and **extensible** interface for hierarchical data management in Django. Whether you're working with **large datasets** or **migrating from another tree-based package**, the methods are designed to be flexible and efficient.

@@ -16,18 +16,25 @@ theme:
 
 nav:
   - Home: index.md
-  - About: about.md
+  - About Treenode Framework: about.md
   - Installation:
       - Installation & Configuration: installation.md
       - Migration Guide: migration.md
   - Models:
       - Model Inheritance & Extensions: models.md
       - API Reference: api.md
+      - Using API: using.md
+  - Admin Classes:
       - Working with Admin Classes: admin.md
-  - Misc:
-      - Caching: cache.md
+      - Drag-n-drop: dnd.md
       - Import & Export: import_export.md
-  - Roadmap: roadmap.md
+  - Advanced:
+      - API-First support: apifirst.md
+      - Caching: cache.md
+      - Customization Guide: customization.md
+  - Development:
+      - Roadmap: roadmap.md
+      
 
 markdown_extensions:
   - toc:
@@ -36,8 +43,9 @@ markdown_extensions:
   - pymdownx.highlight
   - pymdownx.inlinehilite
   - pymdownx.details
-  - pymdownx.tasklist
+  - pymdownx.keys
   - pymdownx.emoji
+  - admonition
 
 plugins:
   - search

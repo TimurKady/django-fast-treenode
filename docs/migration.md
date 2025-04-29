@@ -1,33 +1,162 @@
 ## Migrations Guide
-### Migration from _django-treenode_ packege
-The migration process from `django-treenode` is fully automated. No manual steps are required. Upon upgrading, the necessary data structures will be checked and updated automatically.
-Run the following commands in the terminal:
+### Update django-fast-treenode version 2.1 and less
+TreeNode Framework 3.x introduces significant architectural changes aimed at improving performance, scalability, and bulk operation safety.
+
+The internal structure of the models has changed:
+
+- Field `tn_parent` is replaced by `parent`.
+- Field `tn_priority` is replaced by `priority`.
+- Closure tables (`ClosureModel`) are no longer used.
+
+This requires a simple but **careful migration process** to preserve data integrity.
+
+####  Step 1. Backup your database
+
+Before starting the upgrade process, **create a full backup** of your database:
 
 ```bash
-pip install django-fast-treenode
-python manage.py makemigrations
-python manage.py migrate
-python manage.py runserver
+python manage.py dumpdata > backup.json
 ```
-It's unlikely that you'll need or want this, but in exceptional cases you can call the whole tree update code `cls.update_tree()` manually.
+or use admin panel for export data or database-level tools like `pg_dump`, `mysqldump`, etc.
 
----
 
-### Update _django-fast-treenode_ version 2.1 and less
-The sequence of actions when migrating from previous versions of `django-fast-treenode` is similar to upgrading models of the `django-treenode` package.
-Run the following commands in the terminal:
+!!! important
+    Migration will drop obsolete tables and fields. A backup is mandatory to avoid irreversible
+    data loss.
+
+
+### Step 2. Upgrade the package
+
+Install the latest version of TreeNode Framework:
 
 ```bash
 pip install --upgrade django-fast-treenode
-python manage.py makemigrations
-python manage.py migrate
-python manage.py runserver
 ```
-Now your models are updated and running even faster than before.
+
+#### Step 3. Create migrations
+
+Generate new migrations for your application:
+
+```bash
+python manage.py makemigrations your_app
+```
+
+Django will detect the following changes:
+
+- Rename suggestions:
+    - `tn_parent` → `parent`
+    - `tn_priority` → `priority`
+- Warning about model/table deletion:
+    - Django may suggest deleting the closure table previously used for managing ancestor relationships.
+
+!!! warning
+    1. **Accept the renaming operations**. This preserves the structure of your tree.
+    2. **Accept the ClosureModel table deletion**. There is no need for it anymore.
+
+
+#### Step 4. Apply migrations
+
+Apply the generated migrations:
+
+```bash
+python manage.py migrate
+```
+
+This will update the database schema without affecting existing data integrity if steps above were followed correctly.
+
+#### Step 5. Rebuild tree paths (optional but recommended)
+
+Although the migration preserves structural links, it is recommended to **rebuild** materialized paths and depths to ensure full consistency.
+
+Launch Django shell:
+
+```bash
+python manage.py shell
+```
+
+Then execute:
+
+```python
+YourTreeNodeModel.rebuild()
+```
+
+!!! note
+    This ensures all path and depth values are refreshed according to the new model logic.
+
+#### Step.6 Final Check
+
+After completing the migration:
+
+- Verify that all parent/child relationships are intact.  
+- Check that tree traversal (get descendants, get ancestors) works properly.  
+- Validate that no old `tn_` fields remain in your models or database.
+
+#### Possible Issues and Solutions
+
+| Issue                             | Reason                               | Solution                        |
+|:----------------------------------|:-------------------------------------|:--------------------------------|
+| Django does not offer to rename fields | Migration autogeneration missed changes | Manually edit migration files to use `RenameField` |
+| Loss of parent/child relationships | Ignored rename prompts | Rollback and repeat migration with renames accepted |
+| Errors about missing Closure tables | Old code references deleted models | Remove or replace old closure-related logic |
+| Unexpected field deletions        | Manually modified models during migration | Always verify `makemigrations` output carefully |
+
+
+Migration is safe and straightforward if you follow this guide carefully.
 
 ---
 
-### Migration from _django-mptt_ or _django-treebeard_ packege
+### Migration from django-treenode
+
+Migrating from **django-treenode** to the new **TreeNode Framework** is usually a **smooth and straightforward** process. In general, migration from **django-treenode** is similar to upgrading from an older version of **django-fast-treenode**. The internal concepts are very similar. Most of your codebase will continue to work with minimal or no changes.
+
+#### Step 1. Upgrade the package
+
+Uninstall `django-treenode`, install TreeNode Framework.
+
+```bash
+pip uninstall django-treenode
+pip install django-fast-treenode
+```
+
+#### Step 2. Apply database migrations
+
+After installing the new package, run:
+
+```bash
+python manage.py makemigrations
+python manage.py migrate
+```
+
+This will update the model fields and drop deprecated structures if necessary.
+
+#### Step 3. **Review your code**
+
+Unlike django-treenode, TreeNode Framework **does not support fields with the `tn_` prefix** (such as `tn_parent`, `tn_priority`).
+
+You should search your codebase for any **direct references** to `tn_` fields.
+
+!!! tip  
+    In most cases, you should replace direct field access with the **official model methods** to ensure forward compatibility.
+
+#### Step 4. Adjust admin classes (if customized):
+
+If you had customized Django Admin integration based on `django-treenode`,  
+you may need minor adjustments to fieldsets or list display settings to reflect the new field names.
+
+#### Step 5. **Test your application**
+
+After migration, verify:
+
+- Parent/child relationships are preserved
+- Tree traversal methods (get descendants, ancestors) work correctly
+- No code references missing `tn_` fields
+
+!!! hint
+    If you always adhere to the documented APIs, migrating or upgrading any package or library should always succeed without major issues.
+
+---
+
+### Migration from other packege
 Migration from other packages is not as seamless as with `django-treebeard`, which is probably understandable. However, `django-fast-treenode` has been specially tweaked so that such migration requires minimal effort, including minimal changes to your project code.
 Below is a guide on how to migrate to `django-fast-treenode` from other packages using a project using `django-treebeard` as an example. Migration from other packages will involve similar steps.
 

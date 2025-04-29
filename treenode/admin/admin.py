@@ -1,28 +1,26 @@
 # -*- coding: utf-8 -*-
 """
-TreeNode Admin Module
+TreeNode Admin Model Class
 
-This module provides Django admin integration for the TreeNode model.
-It includes custom tree-based sorting, optimized queries, and
-import/export functionality for hierarchical data structures.
-
-Version: 2.1.0
+Version: 3.0.0
 Author: Timur Kady
-Email: kaduevtr@gmail.com
+Email: timurkady@yandex.com
 """
 
 
-import importlib
 from django.contrib import admin
 from django.db import models
 from django.http import HttpResponseRedirect
+from django.urls import reverse
 from django.utils.safestring import mark_safe
-from django.urls import reverse, resolve
+from django.utils.translation import gettext_lazy as _
 
-from .changelist import SortedChangeList
-from .mixins import AdminMixin
+from .changelist import TreeNodeChangeList
+from .mixin import AdminMixin
 from ..forms import TreeNodeForm
 from ..widgets import TreeWidget
+from .importer import TreeNodeImporter
+from .exporter import TreeNodeExporter
 
 import logging
 
@@ -30,173 +28,163 @@ logger = logging.getLogger(__name__)
 
 
 class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
-    """
-    TreeNodeAdmin class.
+    """Admin for TreeNodeModel."""
 
-    Admin configuration for TreeNodeModel with import/export functionality.
-    """
-
+    # Режимы отображения
     TREENODE_DISPLAY_MODE_ACCORDION = 'accordion'
     TREENODE_DISPLAY_MODE_BREADCRUMBS = 'breadcrumbs'
     TREENODE_DISPLAY_MODE_INDENTATION = 'indentation'
-
     treenode_display_mode = TREENODE_DISPLAY_MODE_ACCORDION
-    import_export = False  # Track import/export availability
-    change_list_template = "admin/tree_node_changelist.html"
-    ordering = []
-    list_per_page = 1000
-    list_sorting_mode_session_key = "treenode_sorting_mode"
 
     form = TreeNodeForm
+    importer_class = None
+    exporter_class = None
+    ordering = []
+    list_per_page = 1000
+
     formfield_overrides = {
-        models.ForeignKey: {"widget": TreeWidget()},
+        models.ForeignKey: {'widget': TreeWidget()},
     }
 
+    change_list_template = "admin/treenode_changelist.html"
+
     class Media:
-        """Include custom CSS and JavaScript for admin interface."""
+        """Meta Class."""
 
         css = {"all": (
-            "treenode/css/treenode_admin.css",
+            "css/treenode_admin.css",
+            "vendors/jquery-ui/jquery-ui.css",
         )}
         js = (
-            'admin/js/jquery.init.js',
-            'treenode/js/treenode_admin.js',
+            "vendors/jquery-ui/jquery-ui.js",
+            # "js/lz-string.min.js",
+            "js/treenode_admin.js",
         )
-
-    def drag(self, obj):
-        """Display an empty column with an icon for future drag-and-drop."""
-        icon = "↕"  # &nbsp;"
-        return mark_safe(f'<span class="treenode-drag-handle">{icon}</span>')
-
-    drag.short_description = ""
-
-    def toggle(self, obj):
-        """Добавление кнопки для открытия/закрытия поддерева, если есть дети."""
-        icon = "►"  # ➕➖
-        if obj.get_children_count() > 0:
-            return mark_safe(
-                f'<button class="treenode-toggle" '
-                f'data-node-id="{obj.pk}">'
-                f'{icon}'
-                f'</button>')
-        return mark_safe('<div class="treenode-space">&nbsp;</div>')
-
-    toggle.short_description = ""
 
     def __init__(self, model, admin_site):
         """Init method."""
         super().__init__(model, admin_site)
 
-        # If `list_display` is empty, take all `fields`
         if not self.list_display:
             self.list_display = [field.name for field in model._meta.fields]
 
-        # Check for necessary dependencies
-        self.import_export = all([
-            importlib.util.find_spec(pkg) is not None
-            for pkg in ["openpyxl", "yaml", "xlsxwriter"]
-        ])
-        if not self.import_export:
-            check_results = [
-                pkg for pkg in ["openpyxl", "pyyaml", "xlsxwriter"]
-                if importlib.util.find_spec(pkg) is not None
-            ]
-            logger.info("Packages" + ", ".join(check_results) + " are \
-not installed. Export and import functions are disabled.")
+        self.TreeNodeImporter = self.importer_class or TreeNodeImporter
+        self.TreeNodeExporter = self.exporter_class or TreeNodeExporter
 
-        if self.import_export:
-            from ..utils import TreeNodeImporter, TreeNodeExporter
+    def drag(self, obj):
+        """Drag and drop сolumn."""
+        return mark_safe('<span class="treenode-drag-handle">&#9776;</span>')
 
-            self.TreeNodeImporter = TreeNodeImporter
-            self.TreeNodeExporter = TreeNodeExporter
+    drag.short_description = _("Move")
+
+    def toggle(self, obj):
+        """Toggle column."""
+        if obj.get_children_count() > 0:
+            return mark_safe(
+                f'<button class="treenode-toggle" data-node-id="{obj.pk}">►</button>'  # noqa
+            )
+        return mark_safe('<div class="treenode-space">&nbsp;</div>')
+
+    toggle.short_description = _("Expand")
+
+    def _get_treenode_field_display(self, request, obj):
+        """Return HTML for the tree node in list view."""
+        level = obj.get_depth()
+        edit_url = reverse(
+            f"admin:{obj._meta.app_label}_{obj._meta.model_name}_change",
+            args=[obj.pk]
+        )
+
+        if self.treenode_display_mode == self.TREENODE_DISPLAY_MODE_ACCORDION:
+            icon = "📄 " if obj.is_leaf() else "📁 "
+            content = (
+                f'<span style="padding-left: {level * 1.5}em;">'
+                f'{icon}<a href="{edit_url}">{str(obj)}</a></span>'
+            )
+        elif self.treenode_display_mode == self.TREENODE_DISPLAY_MODE_BREADCRUMBS:  # noqa
+            breadcrumbs = obj.get_breadcrumbs(
+                attr=getattr(obj, 'treenode_display_field', 'id'))
+            content = " / ".join(map(str, breadcrumbs))
+        elif self.treenode_display_mode == self.TREENODE_DISPLAY_MODE_INDENTATION:  # noqa
+            indent = "&mdash;" * level
+            content = f'{indent}<a href="{edit_url}">{str(obj)}</a>'
         else:
-            self.TreeNodeImporter = None
-            self.TreeNodeExporter = None
+            content = f'<a href="{edit_url}">{str(obj)}</a>'
+
+        html = (
+            f'<div class="treenode-wrapper" '
+            f'data-treenode-pk="{obj.pk}" '
+            f'data-treenode-depth="{level}" '
+            f'data-treenode-parent="{obj.parent_id or ""}">'
+            f'<span class="treenode-content">{content}</span>'
+            f'</div>'
+        )
+        return mark_safe(html)
+
+    def get_list_display(self, request):
+        """Generate list_display dynamically with tree-aware columns."""
+        # Define callable that replaces display field with tree field
+        def treenode_field(obj):
+            return self._get_treenode_field_display(request, obj)
+        treenode_field.short_description = self.model._meta.verbose_name
+
+        display_field = getattr(self.model, 'display_field', '__str__')
+
+        user_list_display = list(super().get_list_display(request))
+        # If the list is empty or only contains __str__, replace it entirely
+        if not user_list_display or user_list_display == ['__str__']:
+            user_list_display = [treenode_field]
+        else:
+            try:
+                pos = user_list_display.index(display_field)
+                user_list_display.pop(pos)
+                user_list_display.insert(pos, treenode_field)
+            except ValueError:
+                user_list_display.insert(0, treenode_field)
+
+        return (self.drag, self.toggle) + tuple(user_list_display)
+
+    def get_list_display_links(self, request, list_display):
+        """Get display list links."""
+        return ('treenode_field',)
 
     def get_queryset(self, request):
-        """
-        Get QuerySet.
-
-        Redefine the query so that by default only root nodes (nodes with
-        tn_parent=None) are loaded. If there is a search query (parameter "q"),
-        return the full list.
-        """
+        """By default: only root nodes, unless searching or editing."""
         qs = super().get_queryset(request)
 
-        resolved_match = resolve(request.path)
-        app_label = self.model._meta.app_label
-        model_name = self.model._meta.model_name
-        if resolved_match.url_name == f"{app_label}_{model_name}_change":
+        if request.GET.get("q"):
             return qs
 
-        if not request.GET.get("q"):
-            qs = qs.filter(tn_parent__isnull=True)
+        resolved = request.resolver_match
+        if resolved and resolved.url_name.endswith("_change"):
+            return qs
 
-        field_name = getattr(self.model, 'treenode_display_field')
-        q = request.GET.get("q", "")
-        if not field_name:
-            return qs.none()
-        return qs.select_related('tn_parent')\
-            .filter(**{f"{field_name}__icontains": q})
+        return qs.filter(parent__isnull=True)
 
     def get_form(self, request, obj=None, **kwargs):
         """Get Form method."""
         form = super().get_form(request, obj, **kwargs)
-        if "tn_parent" in form.base_fields:
-            form.base_fields["tn_parent"].widget = TreeWidget()
+        if "parent" in form.base_fields:
+            form.base_fields["parent"].widget = TreeWidget()
         return form
 
     def get_search_fields(self, request):
-        """Return the correct search field."""
-        return [self.model.treenode_display_field]
+        """Get search fields."""
+        return [getattr(self.model, 'treenode_display_field', 'id')]
 
-    def get_list_display(self, request):
-        """Generate list_display dynamically with user-defined preferences."""
-        change_view_cols = (self.drag, self.toggle)
-        user_list_display = list(super().get_list_display(request))
+    def get_changelist(self, request, **kwargs):
+        """Get ChangeList Class."""
+        return TreeNodeChangeList
 
-        treenode_display_field = getattr(
-            self.model,
-            'treenode_display_field',
-            '__str__'
-        )
-
-        def treenode_field(obj):
-            return self._get_treenode_field_display(request, obj)
-
-        treenode_field.short_description = self.model._meta.verbose_name
-
-        # If the custom list is empty or contains only '__str__'
-        if not user_list_display or user_list_display == ['__str__']:
-            result = (treenode_field,)
-        else:
-            # Remove `treenode_display_field` if it is the first one and
-            # insert `treenode_field`
-            if user_list_display[0] == treenode_display_field:
-                clean_list = user_list_display[1:]
-            else:
-                clean_list = user_list_display
-
-            # Гарантируем, что treenode_field есть в списке
-            if treenode_field not in clean_list:
-                clean_list.insert(0, treenode_field)
-
-            result = tuple(clean_list)
-
-        return change_view_cols + result
-
-    def get_list_display_links(self, request, list_display):
-        """Specify that only `treenode_field` should be clickable."""
-        return ('treenode_field',)
-
-    def get_changelist(self, request):
-        """Use SortedChangeList to sort the results at render time."""
-        return SortedChangeList
+    def get_ordering(self, request):
+        """Get ordering."""
+        return None
 
     def changelist_view(self, request, extra_context=None):
         """Changelist View."""
         extra_context = extra_context or {}
         extra_context['import_export_enabled'] = self.import_export
+        extra_context['num_sorted_fields'] = len(self.get_ordering(request) or [])  # noqa: D501
 
         response = super().changelist_view(request, extra_context=extra_context)
 
@@ -205,91 +193,32 @@ not installed. Export and import functions are disabled.")
         if isinstance(response, HttpResponseRedirect):
             return response
 
-        if request.GET.get("import_done"):
-            # Create a ChangeList instance manually
-            ChangeListClass = self.get_changelist(request)
+        ChangeListClass = self.get_changelist(request)
+        cl = ChangeListClass(
+            request,
+            self.model,
+            self.list_display,
+            self.list_display_links,
+            self.list_filter,
+            self.date_hierarchy,
+            self.search_fields,
+            self.list_select_related,
+            self.list_per_page,
+            self.list_max_show_all,
+            self.list_editable,
+            self,
+            self.get_sortable_by(request),
+            self.get_search_help_text(request),
+        )
 
-            cl = ChangeListClass(
-                request, self.model, self.list_display, self.list_display_links,
-                self.list_filter, self.date_hierarchy, self.search_fields,
-                self.list_select_related, self.list_per_page,
-                self.list_max_show_all, self.list_editable, self
-            )
-
-            # Force queryset update and apply sorting
-            cl.get_queryset(request)
-            cl.get_results(request)
-
-            # Add updated ChangeList to context
-            response.context_data["cl"] = cl
+        cl.get_results(request)
+        cl.result_list = self.render_changelist_rows(cl.result_list, request)
 
         return response
 
-    def get_ordering(self, request):
-        """Get Ordering."""
-        return None
-
-    # ------------------------------------------------------------------------
-
-    def _get_treenode_field_display(self, request, obj):
-        """
-        Return the HTML display of the accordion node.
-
-        Modes:
-        - ACCORDION: '&nbsp;' * level + icon + str(node),
-          where icon = "📄" if obj.is_leaf() returns True, otherwise "📁".
-        - BREADCRUMBS: " / ".join(obj.get_breadcrumbs(attr=field)),
-          where field = getattr(self.model, 'treenode_display_field', None)
-          or "tn_priority" if None.
-        - INDENTATION: '&mdash;' * level + str(node)
-        """
-        # Get a link to edit the object
-        meta = self.model._meta
-        edit_url = reverse(
-            f'admin:{meta.app_label}_{meta.model_name}_change', args=[obj.pk]
-        )
-
-        # Determine the node level
-        level = obj.get_depth()
-
-        mode = self.treenode_display_mode
-        if mode == self.TREENODE_DISPLAY_MODE_ACCORDION:
-            icon = "📄 " if obj.is_leaf() else "📁 "
-            obj_str = str(obj)
-            content = (
-                f'<span style="padding-left: {level * 1.5}em;">'
-                f'{icon}<a href="{edit_url}">{obj_str}</a>'
-                f'</span>'
-            )
-        elif mode == self.TREENODE_DISPLAY_MODE_BREADCRUMBS:
-            field = getattr(
-                self.model,
-                'treenode_display_field',
-                None) or "tn_priority"
-            content = " / ".join(obj.get_breadcrumbs(attr=field))
-        elif mode == self.TREENODE_DISPLAY_MODE_INDENTATION:
-            indent = "&mdash;" * level
-            obj_str = str(obj)
-            content = f'{indent}<a href="{edit_url}">{obj_str}</a>'
-        else:
-            # Just in case mode is not recognized, then use breadcrumbs
-            field = getattr(
-                self.model,
-                'treenode_display_field',
-                None) or "tn_priority"
-            content = " / ".join(obj.get_breadcrumbs(attr=field))
-            content = f'<a href="{edit_url}"">{content}</a>'
-
-        parent = str(getattr(obj, "tn_parent_id", "") or "")
-        html = (
-            f'<div class="treenode-wrapper" '
-            f'data-treenode-pk="{obj.pk}" '
-            f'data-treenode-depth="{level}" '
-            f'data-treenode-parent="{parent}">'
-            f'<span class="treenode-content">{content}</span>'
-            f'</div>'
-        )
-        return mark_safe(html)
+    def get_list_per_page(self, request):
+        """Get list per page."""
+        return 999999
 
 
 # The End

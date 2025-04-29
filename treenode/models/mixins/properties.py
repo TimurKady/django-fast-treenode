@@ -2,12 +2,12 @@
 """
 TreeNode Properties Mixin
 
-Version: 2.1.0
+Version: 3.0.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
-from ..classproperty import classproperty
+from ..decorators import classproperty
 
 
 class TreeNodePropertiesMixin:
@@ -89,24 +89,34 @@ class TreeNodePropertiesMixin:
         return self.get_last_child()
 
     @property
+    def left(self):
+        """Get the node to left."""
+        return self.get_left()
+
+    @property
+    def right(self):
+        """Get the node to right."""
+        return self.get_right()
+
+    @property
     def level(self):
         """Get the node level."""
         return self.get_level()
 
-    @property
-    def parent(self):
-        """Get node parent."""
-        return self.tn_parent
+    # @property
+    # def parent(self):
+    #    """Get node parent."""
+    #    return self.tn_parent
 
     @property
     def parent_pk(self):
         """Get node parent pk."""
         return self.get_parent_pk()
 
-    @property
-    def priority(self):
-        """Get node priority."""
-        return self.get_priority()
+    # @property
+    # def priority(self):
+    #    """Get node priority."""
+    #    return self.get_priority()
 
     @classproperty
     def roots(cls):
@@ -143,14 +153,10 @@ class TreeNodePropertiesMixin:
         """Get an n-dimensional dict representing the model tree."""
         return cls.get_tree()
 
-    @classproperty
-    def tree_display(cls):
-        """Get a multiline string representing the model tree."""
-        return cls.get_tree_display()
-
     @property
-    def tn_order(self):
+    def order(self):
         """Return the materialized path."""
         return self.get_order()
+
 
 # The End

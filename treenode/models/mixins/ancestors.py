@@ -2,14 +2,13 @@
 """
 TreeNode Ancestors Mixin
 
-Version: 2.1.4
+Version: 3.0.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
 from django.db import models
-from django.db.models import OuterRef, Subquery, IntegerField, Case, When, Value
-from ...cache import treenode_cache, cached_method
+from ...cache import cached_method
 
 
 class TreeNodeAncestorsMixin(models.Model):
@@ -20,29 +19,54 @@ class TreeNodeAncestorsMixin(models.Model):
 
         abstract = True
 
-    @cached_method
-    def get_ancestors_queryset(self, include_self=True, depth=None):
-        """Get the ancestors queryset (ordered from root to parent)."""
-        options = dict(child_id=self.pk, depth__gte=0 if include_self else 1)
-        if depth:
-            options.update({'depth__lte': depth})
-
-        return self.closure_model.objects\
-            .filter(**options)\
-            .order_by('-depth')
+    def get_ancestors_queryset(self, include_self=True):
+        """Get all ancestors of a node."""
+        pks = self.query("ancestors", include_self)
+        return self._meta.model.objects.filter(pk__in=pks)
 
     @cached_method
     def get_ancestors_pks(self, include_self=True, depth=None):
         """Get the ancestors pks list."""
-        return self.get_ancestors_queryset(include_self, depth)\
-            .values_list('id', flat=True)
+        return self.query("ancestors", include_self)
 
-    def get_ancestors(self, include_self=True, depth=None):
-        """Get a list with all ancestors (ordered from root to self/parent)."""
-        return list(self.get_ancestors_queryset(include_self, depth))
+    @cached_method
+    def get_ancestors(self, include_self=True):
+        """Get a list of all ancestors of a node."""
+        node = self if include_self else self.parent
+        ancestors = []
+        while node:
+            ancestors.append(node)
+            node = node.parent
+        return ancestors[::-1]
 
-    def get_ancestors_count(self, include_self=True, depth=None):
+    @cached_method
+    def get_ancestors_count(self, include_self=True):
         """Get the ancestors count."""
-        return len(self.get_ancestors_pks(include_self, depth))
+        return self.query(
+            objects="ancestors",
+            include_self=include_self,
+            mode='count'
+        )
+
+    def get_common_ancestor(self, target):
+        """Find lowest common ancestor between self and other node."""
+        if self._path == target._path:
+            return self
+
+        self_path_pks = self.query("ancestors")
+        target_path_pks = target.query("ancestors")
+        common = []
+
+        for a, b in zip(self_path_pks, target_path_pks):
+            if a == b:
+                common.append(a)
+            else:
+                break
+
+        if not common:
+            return None
+
+        ancestor_id = common[-1]
+        return self._meta.model.objects.get(pk=ancestor_id)
 
 # The End

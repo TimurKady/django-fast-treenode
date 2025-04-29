@@ -1,81 +1,57 @@
 # -*- coding: utf-8 -*-
 """
-TreeNode Factory for Closure Table
+TreeNode Factory
 
-This module provides a metaclass `TreeFactory` that automatically binds
-a model to a Closure Table for hierarchical data storage.
+This module provides a metaclass that automatically associates a model with
+a service table and creates a set of indexes for the database
 
 Features:
-- Ensures non-abstract, non-proxy models get a corresponding Closure Table.
-- Dynamically creates and assigns a Closure Model for each TreeNodeModel.
-- Facilitates the management of hierarchical relationships.
+- Dynamically creates and assigns a service model.
+- Facilitates the formation of indexes taking into account the DB vendor.
 
-Version: 2.1.0
+Version: 3.0.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
 
-import sys
-from django.db import models
-from .closure import ClosureModel
+from django.db import models, connection
+from django.db.models import Func, F
 
 
-class TreeFactory(models.base.ModelBase):
-    """
-    Metaclass for binding a model to a Closure Table.
+class TreeNodeModelBase(models.base.ModelBase):
+    """Base Class for TreeNodeModel."""
 
-    For each non-abstract, non-proxy, and "top" (without parents) model,
-    assigns the `ClosureModel` as the closure table.
-    """
+    def __new__(mcls, name, bases, attrs, **kwargs):
+        """Create a New Class."""
+        new_class = super().__new__(mcls, name, bases, attrs, **kwargs)
+        if not new_class._meta.abstract:
+            class_name = name.lower()
+            # Create an index with the desired name
+            """Set DB Indexes with unique names per model."""
+            vendor = connection.vendor
+            indexes = []
 
-    def __init__(cls, name, bases, dct):
-        """Class initialization.
+            if vendor == 'postgresql':
+                indexes.append(models.Index(
+                    fields=['_path'],
+                    name=f'idx_{class_name}_path_ops',
+                    opclasses=['text_pattern_ops']
+                ))
+            elif vendor in {'mysql'}:
+                indexes.append(models.Index(
+                    Func(F('_path'), function='md5'),
+                    name=f'idx_{class_name}_path_hash'
+                ))
+            else:
+                indexes.append(models.Index(
+                    fields=['_path'],
+                    name=f'idx_{class_name}_path'
+                ))
 
-        We check that the model:
-            - is not abstract
-            - is not a proxy
-            - is not a child
-        and only then assign the ClosureModel.
-        """
-        super().__init__(name, bases, dct)
+            # Update the list of indexes
+            new_class._meta.indexes += indexes
 
-        if (cls._meta.abstract or cls._meta.proxy or
-                cls._meta.get_parent_list()):
-            return
-
-        closure_name = f"{cls._meta.object_name}ClosureModel"
-        if getattr(cls, "closure_model", None) is not None:
-            return
-
-        fields = {
-            "parent": models.ForeignKey(
-                cls._meta.model,
-                related_name="children_set",
-                on_delete=models.CASCADE
-            ),
-
-            "child": models.ForeignKey(
-                cls._meta.model,
-                related_name="parents_set",
-                on_delete=models.CASCADE,
-            ),
-
-            "node": models.OneToOneField(
-                cls._meta.model,
-                related_name="tn_closure",
-                on_delete=models.CASCADE,
-                null=True,
-                blank=True,
-            ),
-
-            "__module__": cls.__module__
-        }
-
-        closure_model = type(closure_name, (ClosureModel,), fields)
-        setattr(sys.modules[cls.__module__], closure_name, closure_model)
-
-        cls.closure_model = closure_model
-
+        return new_class
 
 # The End

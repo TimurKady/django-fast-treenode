@@ -1,352 +1,241 @@
 # -*- coding: utf-8 -*-
 """
-TreeNode Cache Module
+TreeCache: High-performance asynchronous in-memory cache with memory size limits
 
-This module provides a singleton-based caching system for TreeNode models.
-It includes optimized key generation, cache size tracking,
-and an eviction mechanism to ensure efficient memory usage.
+Description:
+- FIFO-based cache eviction controlled by total memory footprint (in bytes)
+- Background thread performs serialization and memory tracking
+- Supports prefix-based invalidation and full cache reset
+- Fast and flexible, built for caching arbitrary Python objects
 
-Features:
-- Singleton cache instance to prevent redundant allocations.
-- Custom cache key generation using function parameters.
-- Automatic cache eviction when memory limits are exceeded.
-- Decorator `@cached_method` for caching method results.
+Usage:
+- Call `set(key, value)` to queue data for caching
+- Background worker will serialize and insert it
+- Call `get(key)` to retrieve and deserialize cached values
+- Use `invalidate(prefix)` to remove all keys with the given prefix
+- Use `clear()` to fully reset the cache
+- Don't forget to call `start_worker()` on initialization, and `stop_worker()`
+  on shutdown
 
-Version: 2.2.0
+Dependencies:
+- cloudpickle (faster and more flexible than standard pickle)
+
+Version: 3.0.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
-import hashlib
-import msgpack
 import sys
+import msgpack
+import functools
+import hashlib
 import threading
-from collections import deque, defaultdict, OrderedDict
-from django.conf import settings
-from django.core.cache import caches
-from functools import lru_cache
-from functools import wraps
+import time
+from collections import deque, defaultdict
+from typing import Any, Callable
 
+from .settings import CACHE_LIMIT
 
-# ---------------------------------------------------
-# Utilities
-# ---------------------------------------------------
-
-_DIGITS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-_CLEARINT_THESHOLD = 0.8
-_EVICT_INTERVAL = 50
-
-
-@lru_cache(maxsize=1000)
-def to_base36(num):
-    """
-    Convert an integer to a base36 string.
-
-    For example: 10 -> 'A', 35 -> 'Z', 36 -> '10', etc.
-    """
-    if num == 0:
-        return '0'
-    sign = '-' if num < 0 else ''
-    num = abs(num)
-    result = []
-    while num:
-        num, rem = divmod(num, 36)
-        result.append(_DIGITS[rem])
-    return sign + ''.join(reversed(result))
-
-
-# ---------------------------------------------------
-# Caching
-# ---------------------------------------------------
 
 class TreeCache:
-    """Singleton class for managing the TreeNode cache."""
+    """Tree Cache Class."""
 
-    _instance = None
-    _instance_lock = threading.Lock()
+    def __init__(self):
+        """Initialize TreeCache with background worker and memory limit."""
+        self.max_size = CACHE_LIMIT
 
-    def __new__(cls, *args, **kwargs):
-        """Singleton new."""
-        with cls._instance_lock:
-            if cls._instance is None:
-                cls._instance = super(TreeCache, cls).__new__(cls)
-        return cls._instance
+        self.cache = {}                # key -> serialized value
+        self.order = deque()           # FIFO order tracking
+        self.queue_index = {}
+        self.sizes = {}                # key -> size in bytes
+        self.total_size = 0            # total size in bytes
+        self.prefix_index = defaultdict(set)  # prefix -> keys
+        self.key_prefix = {}           # key -> prefix
 
-    def __init__(self, cache_limit=100 * 1024 * 1024):
-        """
-        Initialize the cache.
+        self.queue = deque()           # write queue (key, value)
+        self.queue_lock = threading.Lock()
 
-        If the 'treenode' key is present in settings.CACHES, the corresponding
-        backend is used.
-        Otherwise, the custom dictionary is used.
-        The cache size (in bytes) is taken from
-        settings.TREENODE_CACHE_LIMIT (MB), by default 100 MB.
-        """
-        if hasattr(self, '_initialized') and self._initialized:
-            return
+        self.stop_event = threading.Event()
+        self.worker = threading.Thread(target=self._worker_loop, daemon=True)
+        self.start_worker()
 
-        # Get the cache limit (MB), then convert to bytes.
-        cache_limit_mb = getattr(settings, 'TREENODE_CACHE_LIMIT', 100)
-        self.cache_limit = cache_limit_mb * 1024 * 1024
+    def start_worker(self):
+        """Start the background worker thread."""
+        if not self.worker.is_alive():
+            self.worker.start()
 
-        # Select backend: if there is 'treenode' in settings.CACHES, use it.
-        # Otherwise, use our own dictionary.
-        if hasattr(settings, 'CACHES') and 'treenode' in settings.CACHES:
-            self.cache = caches['treenode']
-        else:
-            # We use our dictionary as a backend.
-            self.cache = OrderedDict()
+    def stop_worker(self):
+        """Stop the background worker thread."""
+        self.stop_event.set()
+        self.worker.join()
 
-        self.order = deque()            # Queue for FIFO implementation.
-        self.total_size = 0             # Current cache size in bytes.
-        self.lock = threading.Lock()    # Lock for thread safety.
-
-        # Additional index for fast search of keys by prefix
-        # Format: {prefix: {key1, key2, ...}}
-        self.prefix_index = defaultdict(set)
-        # Dictionary to store the sizes of each key (key -> size in bytes)
-        self.sizes = {}
-        # Dictionary to store the prefix for each key to avoid repeated
-        # splitting
-        self.key_prefix = {}
-
-        # Counter for number of set operations for periodic eviction
-        self._set_counter = 0
-        # Evict cache every _evict_interval set operations when using external
-        # backend
-        self._evict_interval = _EVICT_INTERVAL
-
-        self._initialized = True
-
-    def generate_cache_key(self, label, func_name, unique_id, *args, **kwargs):
-        """
-        Generate a cache key.
-
-        <label>_<func_name>_<unique_id>_<hash>
-        """
-        # If using custom dict backend, use simple key generation without
-        # serialization.
-        if isinstance(self.cache, dict):
-            sorted_kwargs = sorted(kwargs.items())
-            return f"{label}_{func_name}_{unique_id}_{args}_{sorted_kwargs}"
-        else:
-            try:
-                # Using msgpack for fast binary representation of arguments
-                sorted_kwargs = sorted(kwargs.items())
-                params_bytes = msgpack.packb(
-                    (args, sorted_kwargs), use_bin_type=True)
-            except Exception:
-                params_bytes = repr((args, kwargs)).encode('utf-8')
-            # Using MD5 for speed (no cryptographic strength)
-            hash_value = hashlib.md5(params_bytes).hexdigest()
-            return f"{label}_{func_name}_{unique_id}_{hash_value}"
-
-    def get_obj_size(self, value):
+    def _estimate_size(self, value):
         """
         Determine the size of the object in bytes.
 
         If the value is already in bytes or bytearray, simply returns its
         length. Otherwise, uses sys.getsizeof for an approximate estimate.
         """
-        if isinstance(value, (bytes, bytearray)):
-            return len(value)
-        return sys.getsizeof(value)
+        try:
+            return int(len(msgpack.packb(value)) * 2.5)
+        except Exception:
+            return sys.getsizeof(value)
 
-    def set(self, key, value):
+    def _worker_loop(self):
         """
-        Store the value in the cache.
+        Loop Worker.
 
-        Stores the value in the cache, updates the FIFO queue, prefix index,
-        size dictionary, and total cache size.
+        Background worker that processes the cache queue,
+        serializes values, and enforces memory constraints.
         """
-        # Idea 1: Store raw object if using custom dict backend, otherwise
-        # serialize using msgpack.
-        if isinstance(self.cache, dict):
-            stored_value = value
-        else:
-            try:
-                stored_value = msgpack.packb(value, use_bin_type=True)
-            except Exception:
-                stored_value = value
-
-        # Calculate the size of the stored value
-        if isinstance(stored_value, (bytes, bytearray)):
-            size = len(stored_value)
-        else:
-            size = sys.getsizeof(stored_value)
-
-        # Store the value in the cache backend
-        if isinstance(self.cache, dict):
-            self.cache[key] = stored_value
-        else:
-            self.cache.set(key, stored_value)
-
-        # Update internal structures under lock
-        with self.lock:
-            if key in self.sizes:
-                # If the key already exists, adjust the total size
-                old_size = self.sizes[key]
-                self.total_size -= old_size
-            else:
-                # New key: add to FIFO queue
-                self.order.append(key)
-                # Compute prefix once and store it in key_prefix
-                if "_" in key:
-                    prefix = key.split('_', 1)[0] + "_"
+        while not self.stop_event.is_set():
+            with self.queue_lock:
+                if self.queue:
+                    key, value = self.queue.popleft()
                 else:
-                    prefix = key
+                    key = value = None
+
+            if key is not None:
+                obj_size = self._estimate_size(value)
+                self.cache[key] = value
+                self.order.append(key)
+                self.sizes[key] = obj_size
+                self.total_size += obj_size
+
+                prefix = key.split("|", 1)[0] + "|"
                 self.key_prefix[key] = prefix
                 self.prefix_index[prefix].add(key)
-            # Save the size for this key and update total_size
-            self.sizes[key] = size
-            self.total_size += size
 
-            # Increment the set counter for periodic eviction
-            self._set_counter += 1
-
-        # Idea 3: If using external backend, evict cache every _evict_interval
-        # sets. Otherwise, always evict immediately.
-        if self._set_counter >= self._evict_interval:
-            with self.lock:
-                self._set_counter = 0
-            self._evict_cache()
-
-    def get(self, key):
-        """
-        Get a value from the cache by key.
-
-        Quickly retrieves a value from the cache by key.
-        Here we simply request a value from the backend (either a dictionary or
-        Django cache-backend) and return it without any additional operations.
-        """
-        if isinstance(self.cache, dict):
-            return self.cache.get(key)
-        else:
-            packed_value = self.cache.get(key)
-            if packed_value is None:
-                return None
-            try:
-                return msgpack.unpackb(packed_value, raw=False)
-            except Exception:
-                # If unpacking fails, return what we got
-                return packed_value
-
-    def invalidate(self, prefix):
-        """
-        Invalidate model cache.
-
-        Quickly removes all items from the cache whose keys start with prefix.
-        Uses prefix_index for instant access to keys.
-        When removing, each key's size is retrieved from self.sizes,
-        and total_size is reduced by the corresponding amount.
-        """
-        prefix += '_'
-        with self.lock:
-            keys_to_remove = self.prefix_index.get(prefix, set())
-            if not keys_to_remove:
-                return
-
-            # Remove keys from main cache and update total_size via sizes
-            # dictionary
-            if isinstance(self.cache, dict):
-                for key in keys_to_remove:
-                    self.cache.pop(key, None)
-                    size = self.sizes.pop(key, 0)
-                    self.total_size -= size
-                    # Remove key from key_prefix as well
-                    self.key_prefix.pop(key, None)
+                if self.total_size > self.max_size:
+                    self._evict_cache()
             else:
-                # If using Django backend
-                self.cache.delete_many(list(keys_to_remove))
-                for key in keys_to_remove:
-                    size = self.sizes.pop(key, 0)
-                    self.total_size -= size
-                    self.key_prefix.pop(key, None)
+                time.sleep(0.0025)
 
-            # Remove prefix from index and update FIFO queue
-            del self.prefix_index[prefix]
-            self.order = deque(k for k in self.order if k not in keys_to_remove)
+    def set(self, key: str, value: Any):
+        """Queue a key-value pair for caching. Actual insertion is async."""
+        with self.queue_lock:
+            self.queue.append((key, value))
+            self.queue_index[key] = value
 
-    def clear(self):
-        """Clear cache completely."""
-        with self.lock:
-            if isinstance(self.cache, dict):
-                self.cache.clear()
-            else:
-                self.cache.clear()
-            self.order.clear()
-            self.prefix_index.clear()
-            self.sizes.clear()
-            self.key_prefix.clear()
-            self.total_size = 0
+    def get(self, key: str) -> Any:
+        """
+        Get data from the cache.
+
+        Retrieve a value from the cache and deserialize it.
+        Returns None if key is not present or deserialization fails.
+        """
+        # Step 1. Try get value from the cache
+        from_cache = self.cache.get(key)
+        if from_cache is not None:
+            return from_cache
+
+        # Step 2. Search in pending queue
+        return self.queue_index.get(key)
 
     def _evict_cache(self):
+        """Remove oldest entries from the cache and auxiliary index."""
+        while self.total_size > self.max_size and self.order:
+            oldest = self.order.popleft()
+            self.total_size -= self.sizes.pop(oldest, 0)
+            self.cache.pop(oldest, None)
+            prefix = self.key_prefix.pop(oldest, None)
+            if prefix:
+                self.prefix_index[prefix].discard(oldest)
+            if hasattr(self, "queue_index"):
+                self.queue_index.pop(oldest, None)
+
+    def invalidate(self, prefix: str):
         """
-        Perform FIFO cache evacuation.
+        Invalidate all keys with the given prefix (e.g. "node_").
 
-        Removes old items until the total cache size is less than
-        _CLEARINT_THESHOLD of the limit.
+        Also purges pending items in the queue with the same prefix.
         """
-        with self.lock:
-            # Evict until total_size is below 80% of cache_limit
-            target_size = _CLEARINT_THESHOLD * self.cache_limit
-            while self.total_size > target_size and self.order:
-                # Extract the oldest key from the queue (FIFO)
-                key = self.order.popleft()
+        prefix = f"{prefix}|"
+        keys_to_remove = self.prefix_index.pop(prefix, set())
+        for key in keys_to_remove:
+            self.total_size -= self.sizes.pop(key, 0)
+            self.cache.pop(key, None)
+            self.key_prefix.pop(key, None)
+            try:
+                self.order.remove(key)
+            except ValueError:
+                pass
+        with self.queue_lock:
+            self.queue = deque(
+                [(k, v) for k, v in self.queue if not k.startswith(prefix)])
 
-                # Delete entry from backend cache
-                if isinstance(self.cache, dict):
-                    self.cache.pop(key, None)
-                else:
-                    self.cache.delete(key)
+    def clear(self):
+        """Fully reset the cache, indexes, and the background queue."""
+        self.cache.clear()
+        self.order.clear()
+        self.sizes.clear()
+        self.total_size = 0
+        self.prefix_index.clear()
+        self.key_prefix.clear()
+        with self.queue_lock:
+            self.queue.clear()
 
-                # Extract the size of the entry to be deleted and reduce
-                # the overall cache size
-                size = self.sizes.pop(key, 0)
-                self.total_size -= size
+    def info(self) -> dict:
+        """Return runtime statistics for monitoring and diagnostics."""
+        with self.queue_lock:
+            queued = len(self.queue)
 
-                # Retrieve prefix from key_prefix without splitting
-                prefix = self.key_prefix.pop(key, None)
-                if prefix is not None:
-                    self.prefix_index[prefix].discard(key)
-                    if not self.prefix_index[prefix]:
-                        del self.prefix_index[prefix]
+        return {
+            "total_keys": len(self.cache),
+            "queued_items": queued,
+            "total_size": int(10*self.total_size/(1024*1024))/10,
+            "max_size": int(10*self.max_size/(1024*1024))/10,
+            "fill_percent": round(self.total_size / self.max_size * 100, 2) if self.max_size else 0.0,  # noqa: D501
+            "prefixes": len(self.prefix_index),
+            "running": not self.stop_event.is_set(),
+            "thread_alive": self.worker.is_alive()
+        }
+
+    def generate_cache_key(self, label: str, func_name: str, unique_id: int,
+                           args: tuple, kwargs: dict) -> str:
+        """
+        Generate a unique cache key for a function call.
+
+        - Fast-path: for simple positional arguments, avoid serialization.
+        - Full-path: use pickle+blake2b hash for complex inputs.
+        """
+        if not args and not kwargs:
+            return f"{label}|{func_name}:{unique_id}:empty"
+
+        try:
+            key_data = (args, kwargs)
+            packed = msgpack.packb(key_data)
+            key = hashlib.blake2b(packed, digest_size=8).hexdigest()
+            return f"{label}|{func_name}:{unique_id}:{key}"
+        except Exception:
+            fallback = repr((args, kwargs)).encode()
+            key = hashlib.sha1(fallback).hexdigest()
+            return f"{label}|{func_name}:{unique_id}:{key}"
 
 
-# Global cache object (unique for the system)
+# Global singleton cache instance
 treenode_cache = TreeCache()
 
 
-# ---------------------------------------------------
-# Decorator
-# ---------------------------------------------------
+def cached_method(func: Callable) -> Callable:
+    """
+    Decorate method.
 
-def cached_method(func):
-    """Decorate instance or class methods."""
-    @wraps(func)
+    Method decorator that caches results on a per-instance basis using
+    TreeCache. The cache key includes the method, arguments, and instance ID.
+    """
+    cache = treenode_cache
+
+    @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-        cache = treenode_cache
-
-        if isinstance(self, type):
-            unique_id = to_base36(id(self))
-            label = getattr(self._meta, 'label', self.__name__)
-        else:
-            unique_id = getattr(self, "pk", None) or to_base36(id(self))
-            label = self._meta.label
-
-        cache_key = cache.generate_cache_key(
-            label,
-            func.__name__,
-            unique_id,
-            *args,
-            **kwargs
-        )
-        value = cache.get(cache_key)
-        if value is None:
-            value = func(self, *args, **kwargs)
-            cache.set(cache_key, value)
-        return value
+        label = self._meta.label
+        unique_id = getattr(self, "pk", None) or id(self)
+        func_name = func.__name__
+        key = cache.generate_cache_key(
+            label, func_name, unique_id, args, kwargs)
+        result = cache.get(key)
+        if result is None:
+            result = func(self, *args, **kwargs)
+            cache.set(key, result)
+        return result
     return wrapper
-
-
-# The End

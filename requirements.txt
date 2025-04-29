@@ -1,0 +1,4 @@
+Django>=3.2
+msgpack>=1.0.0
+openpyxl>=3.0.0
+pyyaml>=5.1

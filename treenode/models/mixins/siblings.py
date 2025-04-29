@@ -2,13 +2,23 @@
 """
 TreeNode Siblings Mixin
 
-Version: 2.1.0
+Version: 3.0.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
 from django.db import models
-from treenode.cache import cached_method
+from ...cache import cached_method
+
+
+'''
+try:
+    profile
+except NameError:
+    def profile(func):
+        """Profile."""
+        return func
+'''
 
 
 class TreeNodeSiblingsMixin(models.Model):
@@ -26,67 +36,59 @@ class TreeNodeSiblingsMixin(models.Model):
         Returns the created node object or None if failed. It will be saved
         by this method.
         """
-        if isinstance(position, int):
-            priority = position
-            parent = self.tn_parent
-        else:
-            if position not in [
-                    'first-sibling', 'left-sibling', 'right-sibling',
-                    'last-sibling', 'sorted-sibling']:
-                raise ValueError(f"Invalid position format: {position}")
-            parent, priority = self._meta.model._get_place(self, position)
-
         instance = kwargs.get("instance")
         if instance is None:
             instance = self._meta.model(**kwargs)
-        instance.tn_priority = priority
-        instance.tn_priority = parent
+
+        parent, priority = self._meta.model._get_place(self.patent, position)
+
+        instance.parent = parent
+        instance.priority = priority
         instance.save()
+        if isinstance(position, str) and 'sorted' in position:
+            self._sort_siblings()
         return instance
 
-    @cached_method
     def get_siblings_queryset(self, include_self=True):
-        """Get the siblings queryset with prefetch."""
-        if self.tn_parent:
-            qs = self._meta.model.objects.filter(tn_parent=self.tn_parent)
-        else:
-            qs = self._meta.model.objects.filter(tn_parent__isnull=True)
-        return qs if include_self else qs.exclude(pk=self.pk)
+        """Get Siblings QuerySet."""
+        qs = self._meta.model.objects.filter(parent_id=self._parent_id)
+        return qs if include_self else qs.exclude(pk=self.id)
 
+    # @profile
+    @cached_method
     def get_siblings(self, include_self=True):
         """Get a list with all the siblings."""
-        return list(self.get_siblings_queryset())
+        queryset = self._meta.model.objects.filter(parent=self.parent)
+        queryset = queryset if include_self else queryset.exclude(pk=self.pk)
+        return [n for n in queryset]
 
-    def get_siblings_count(self, include_self=True):
-        """Get the siblings count."""
-        return self.get_siblings_queryset(include_self).count()
-
+    @cached_method
     def get_siblings_pks(self, include_self=True):
         """Get the siblings pks list."""
-        return [item.pk for item in self.get_siblings_queryset(include_self)]
+        return self.query("siblings", include_self)
 
+    @cached_method
+    def get_siblings_count(self):
+        """Get the siblings count."""
+        qs = self.query("siblings")
+        return qs.count()
+
+    @cached_method
     def get_first_sibling(self):
-        """
-        Return the fist node’s sibling.
+        """Return the first sibling in the tree, or None."""
+        qs = self._meta.model.objects.filter(parent_id=self._parent_id)
+        return qs.first()
 
-        Method can return the node itself if it was the leftmost sibling.
-        """
-        return self.get_siblings_queryset().fist()
-
+    @cached_method
     def get_previous_sibling(self):
         """Return the previous sibling in the tree, or None."""
-        priority = self.tn_priority - 1
-        if priority < 0:
-            return None
-        return self.get_siblings_queryset.filter(tn_priority=priority)
+        options = {'parent_id': self._parent_id, 'priority__lt': self.priority}
+        return self._meta.model.objects.filter(**options).last()
 
     def get_next_sibling(self):
         """Return the next sibling in the tree, or None."""
-        priority = self.tn_priority = 1
-        queryset = self.get_siblings_queryset()
-        if priority == queryset.count():
-            return None
-        return queryset.filter(tn_priority=priority)
+        options = {'parent_id': self._parent_id, 'priority__gt': self.priority}
+        return self._meta.model.objects.filter(**options).first()
 
     def get_last_sibling(self):
         """
@@ -94,6 +96,7 @@ class TreeNodeSiblingsMixin(models.Model):
 
         Method can return the node itself if it was the leftmost sibling.
         """
-        return self.get_siblings_queryset().last()
+        qs = self._meta.model.objects.filter(parent_id=self._parent_id)
+        return qs.last()
 
 # The End

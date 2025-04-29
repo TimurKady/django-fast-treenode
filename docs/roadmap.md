@@ -1,60 +1,71 @@
 ## Roadmap
 
-### Last Update
-The latest version provides optimized database operations, an improved caching mechanism, and enhanced integration capabilities, making it a **robust and efficient choice** for handling tree structures.
+The **`django-fast-treenode`** package will continue to evolve from its original concept—combining the benefits of the hybrid models into a high-performance solution for managing and visualizing hierarchical data in Django projects. 
 
-**Version 2.1 – Compatibility and Optimization**
-Reducing dependencies and simplifying migration from other libraries.
+The focus is on **speed, usability, and flexibility**.
 
-- **Expanding functionality** to simplify migration from other tree packages.
-- Introducing node **filtering and search with AJAX**.
-- **Optimizing query performance** by reducing query complexity and improving indexing strategies.
-- **Reducing database load** from the `TreeNodeAdmin` when working with large trees.
-- Removing `numpy` in favor of lighter alternatives.
-- Removing `Select2` in favor of light custom select2-like implementation.
+#### Roadmap for 3.x Series
+
+The 3.x release series will focus on strengthening TreeNode Framework in terms of security, usability, and performance scalability, while maintaining backward compatibility and architectural cleanliness.
 
 
-### Planned Roadmap for Future Versions
-The **django-fast-treenode** package will continue to evolve from its original concept—combining the benefits of the **Adjacency List** and **Closure Table** models—into a high-performance solution for managing and visualizing hierarchical data in Django projects. The focus is on **speed, usability, and flexibility**.
+* **Version 3.1 — JWT Authentication for API**
 
-#### Version 2.2 – Performance Enhancements
-Focusing on optimizing query efficiency, reducing database load, and improving API interactions.
+    - Introduce optional JWT-based token authentication for the auto-generated API.
+    - Allow easy activation through a single setting (`TREENODE_API_USE_JWT = True`).
+    - Preserve backward compatibility: API remains open unless explicitly protected.
+    - Foundation for future security features (e.g., user-specific trees, audit trails).
 
-- **Optimized Query Execution**: Minimize query overhead by restructuring SQL operations, reducing redundant lookups, and introducing batched operations for bulk inserts.
-- **API-First CRUD Implementation**: Introduce full Create, Read, Update, and Delete (CRUD) operations for tree structures, ensuring seamless API-based interaction with hierarchical data.
-- **Efficient Serialization**: Develop a lightweight tree serialization format optimized for API responses, reducing payload size while preserving structural integrity.
-- **Advanced Node Filtering & Search**: Implement AJAX-based filtering and search mechanisms in Django Admin and API endpoints to enhance usability and response time.
+* **Version 3.2 — Admin Usability Improvements**
 
-#### Version 2.3 – Drag-and-Drop and Admin UI Improvements
-Improving the usability and management of hierarchical structures in Django Admin.
+    Focus: enhance operational safety and optimize workflows for large-scale trees.
 
-- **Drag-and-Drop Node Reordering**: Introduce interactive drag-and-drop functionality for reordering nodes within the tree structure directly in Django Admin.
-- **Hierarchical Sorting Strategies**: Enable various sorting methods, including manual ordering, weight-based prioritization, and hybrid approaches that combine automatic and manual sorting.
-- **Admin Panel Enhancements**: Expand Django Admin capabilities for tree structures, including better visualization, inline node editing, and bulk actions.
+    - **Safe Import Preview**:  
 
-#### Version 3.0 – Third-Generation Cache Management System
-Introducing a more advanced caching system to improve scalability and efficiency.
+      Implement a staging layer for imports, allowing users to review and confirm imported data before committing changes.
 
-- **Two-Level FIFO/LRU Cache**: Implement a hybrid caching mechanism combining First-In-First-Out (FIFO) and Least Recently Used (LRU) strategies to optimize cache retention for tree nodes.
-- **Multi-Process Cache Synchronization**: Ensure cache consistency across different execution environments (WSGI, Gunicorn, Uvicorn) with a distributed synchronization mechanism.
-- **Background Synchronization**: Introduce delayed closure table updates via Celery or RQ, preventing blocking operations while maintaining data consistency.
+    - **Incremental Export**:  
 
-#### Version 4.0 – Asynchronous Operations
-Refactoring the package to support fully asynchronous operations for non-blocking execution.
+      Support selective export of nodes modified after a specified date or revision marker.
 
-- **Asynchronous API Execution**: Convert existing synchronous operations to asynchronous, leveraging `async/await` for improved performance.
-- **Async Database Support**: Implement async-friendly database operations compatible with Django’s evolving asynchronous ORM.
-- **Optimized Tree Node Caching**: Shift from caching precomputed query results to caching raw tree nodes, reducing recomputation overhead and improving retrieval speed.
-- **Asynchronous Testing**: Expand the test suite to cover async behavior and the new caching mechanism under concurrent loads.
-- **Documentation Update**: Revise and expand documentation to reflect changes in the asynchronous execution model and best practices for implementation.
+  
+* **Version 3.3 — Soft Deletion Support**
 
-#### Version 5.0 – Beyond Django ORM
-Decoupling tree structure management from Django’s ORM to increase flexibility and adaptability.
+    Focus: improve real-world resilience without sacrificing performance.
 
-- **Multi-Backend Storage Support**: Introduce support for alternative storage engines beyond Django ORM, such as SQLAlchemy, custom PostgreSQL functions, and other database frameworks.
-- **Redis Integration for In-Memory Trees**: Implement an optional Redis-based tree storage system, allowing high-speed in-memory hierarchy operations.
-- **JSON-Based Storage Option**: Enable lightweight embedded tree storage using JSON structures, facilitating easier use in API-driven and microservice architectures.
-- **ORM-Agnostic API Layer**: Design an API-first approach that allows tree structures to function independently from Django models, making the package usable in broader contexts.
+    - Add optional support for "soft delete" behavior (`is_deleted` field).
+    - Modify core queries and cache invalidation logic to respect soft-deleted nodes.
+    - Add a new task type to the internal task queue system for bulk logical deletions.
+  
+* **Version 3.4 — Cache System Enhancements**
+
+    Focus: lay the foundation for scaling Treenode Framework to extreme node counts (>100,000 nodes).
+
+    - General improvements to the in-memory cache system.
+    - Research and implement better object size tracking for memory management.
+    - Explore disk-based, Redis-based, or hybrid caching strategies for massive trees.
+
+Each step in the 3.x roadmap is intended to strengthen the framework's key principles: **security, usability, scalability, simplicity**.
+
+#### Long-Term Vision
+
+
+* **Version 4.0 – Improved architecture**
+
+    The main debut idea of ​​version 4.0 is to further develop the hybrid approach. This version will implement a new new architectural solution that is designed to increase the speed of selecting descendants, and therefore moving subtrees, and remove the existing restrictions on the maximum nesting depth of the tree (currently the recommended value when using up to 1000 levels).
+
+    - Speed ​​up the operation of extracting descendants.
+    - Speeding up operations for moving large subtrees.
+    - Performance optimization when working with trees that have extreme depth (more than 2000 levels).
+
+* **Version 5.0 – Beyond Django ORM**
+
+    Decoupling tree structure management from Django’s ORM to increase flexibility and adaptability.
+
+    - **Multi-Backend Storage Support**: Introduce support for alternative storage engines beyond Django ORM, such as SQLAlchemy, custom PostgreSQL functions, and other database frameworks.
+    - **Redis Integration for In-Memory Trees**: Implement an optional Redis-based tree storage system, allowing high-speed in-memory hierarchy operations.
+    - **JSON-Based Storage Option**: Enable lightweight embedded tree storage using JSON structures, facilitating easier use in API-driven and microservice architectures.
+    - **ORM-Agnostic API Layer**: Design an API-first approach that allows tree structures to function independently from Django models, making the package usable in broader contexts.
 
 So, each milestone is designed to improve performance, scalability, and flexibility, ensuring that the package remains relevant for modern web applications, API-driven architectures, and high-performance data processing environments support.
 

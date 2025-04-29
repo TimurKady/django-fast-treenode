@@ -1,21 +1,18 @@
 ## TreeNode Cache Management
 
-### First Generation
+### Caching Strategy
 
-The initial caching mechanism was inherited from the `django-treenode` package and was based on the simple use of Django's built-in cache. Each query result was stored in the cache, preventing repeated database queries and thereby improving performance.
+The caching mechanism in TreeNode Framework has undergone a clear evolution from a naive first-generation strategy to a robust, controlled system.
 
-The advantage of this approach was its simplicity: it was easy to integrate and provided a speed boost without complex configurations. However, it also had significant drawbacks. Since the mechanism did not control the total memory usage, it quickly filled the cache with a vast number of small queries. This led to cache system overload, reduced efficiency, and slowed down other parts of the application that relied on the same cache. As a result, intensive operations with tree structures could cause memory management issues and impact cache system performance.
+Initially, it used Django's default cache to store individual query results. This was simple and fast, but quickly led to uncontrolled memory growth, especially under frequent tree operations, eventually degrading overall cache performance.
+
+In the current version, caching is managed through a fixed-size FIFO queue, shared across all TreeNodeModel instances. This ensures that the oldest entries are automatically discarded when the memory limit is reached.
+
+While FIFO is not the most sophisticated strategy, it strikes an effective balance between performance and simplicity, providing predictable behavior and stable memory usage under high load — a significant improvement over the earlier unbounded approach.
 
 ---
 
-### Second Generation
-
-In the current version, the caching mechanism has been enhanced with **memory usage limitation** for all models inheriting from `TreeNodeModel`. This was implemented as a **FIFO queue (First In, First Out)**, which automatically removes the oldest entries when the limit is exceeded.
-
-The choice of FIFO was driven by the package's universality. `django-fast-treenode` is designed to work in various scenarios, so it needed a strategy that efficiently handles evenly distributed queries. Even if queries are not evenly distributed in a particular project (e.g., some nodes are accessed more frequently than others), FIFO does not significantly reduce cache performance compared to the first-generation approach. However, it prevents uncontrolled memory growth, ensuring stable cache operation even under high request loads.
-
-
-#### Key Features
+### Key Features
 
 **Global Cache Limit**: The setting `TREENODE_CACHE_LIMIT` defines the maximum cache size (in MB) for **all models** inheriting from `TreeNodeModel`. Default is **100MB** if not explicitly set in `settings.py`.
 
@@ -125,70 +122,3 @@ Best Practices:
 
 By leveraging these caching utilities, `django-fast-treenode` ensures efficient handling of hierarchical data while maintaining high performance.
 
----
-
-### Third Generation (Currently in Development)
-
-The next version of the caching mechanism introduces adaptability, a **split between "cold" and "hot" caches**, and enhanced eviction strategies. Key improvements include:
-
-#### 1. Two-Tier Caching System
-
-The cache is now divided into two queues:
-
-- **FIFO (70%-80%)** – for new and infrequently accessed data.
-- **LRU (20%-30%)** – for frequently accessed objects (Least Recently Used).
-
-How it works:
-
-- If tree queries are evenly distributed, the cache behaves like a standard FIFO.
-- If certain nodes receive frequent queries, those records automatically move to LRU, reducing database load.
-
-#### 2. Moving Data Between FIFO and LRU
-
-Each new entry initially goes into **FIFO**. If accessed **more than N times**, it moves to **LRU**, where it remains longer.
-
-**How N is determined:**
-
-- A threshold is set based on **mathematical statistics**: N = 1 / sqrt(2).
-- An absolute threshold limit is added.
-
-**LRU Behavior:**
-
-- When accessed, a record moves to the top of the list.
-- New records are also placed at the top.
-- If LRU reaches capacity, **the evicted record returns to FIFO** instead of being deleted.
-
-#### 3. Cache Invalidation
-
-When data is modified or deleted, the cache **automatically resets** to prevent outdated information. This ensures that modified tree structures do not retain stale data in the cache.
-
-#### 4. Dynamic Time Threshold (DTT)
-
-To automatically clear outdated records, an **adaptive mechanism** is used. Instead of a static TTL, the **DTT parameter** is dynamically calculated based on **Poisson distribution**.
-
-How DTT is calculated:
-
-1. Compute the **average interval between queries (T)**: ``` T = (1/N) * Σ (t_i - t_(i-1)), i=1...N```
-2. Store **averaged value** `ΣΔt / N`
-3. Set **DTT = 3T**, which removes **95% of infrequent queries**.
-
-**Why this is better than a fixed TTL:**
-
-- If queries are rare → DTT **increases**, preventing premature deletions.
-- If queries are frequent → DTT **decreases**, accelerating cache clearing.
-
-All calculations happen **automatically**, without manual configuration.
-
-Additionally, this mechanism will support synchronization in multiprocess environments (WSGI, Gunicorn, Uvicorn).
-
----
-
-### Fourth Generation (Planned)
-
-The next generation of caching will include:
-
-- **Middleware for caching nodes**, considering nested objects.
-- **"Smart" prediction** of peak and dynamics of loads.
-- **Asynchronous operations** support, ensuring efficient caching and retrieval in non-blocking environments.
-
-Future versions will continue improving this mechanism, making it **even more efficient and predictable** when working with large tree structures.

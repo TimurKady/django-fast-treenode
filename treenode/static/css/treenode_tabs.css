@@ -1,0 +1,51 @@
+.tabs { 
+  list-style: none; 
+  padding: 0 !important;
+  margin:0 !important;
+  display: flex; 
+  gap: 0em;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.tab { 
+  padding: 0.5em 1em; 
+  cursor: pointer; 
+  color: var(--object-tools-fg);
+  background: var(--object-tools-bg);
+  border-radius: 4px;
+}
+
+.tab.active {
+  background: var(--primary);
+  font-weight: bold;
+ }
+
+.tab-content {
+  border: 1px solid var(--border-color);
+  padding: 1em; 
+  border-radius: 4px; 
+  margin-top: 1em;
+}
+
+.tabs li.tab {
+  list-style-type: none;
+  margin: 0;
+  border-radius: 5px 5px 0 0;
+}
+
+.tab-content a.button {
+  display: inline-block;
+  text-align: center;
+  padding: 10px 10px !important;
+  width: 110px;
+  
+}
+
+.tab-content form > .form-row {
+  height: 60px;
+}
+
+.tab-content .button.default {
+  display: inline-block;
+  width: 130px;
+}

@@ -2,13 +2,23 @@
 """
 TreeNode Roots Mixin
 
-Version: 2.1.0
+Version: 3.0.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
 from django.db import models
-from treenode.cache import cached_method
+from ...cache import cached_method
+
+
+'''
+try:
+    profile
+except NameError:
+    def profile(func):
+        """Profile."""
+        return func
+'''
 
 
 class TreeNodeRootsMixin(models.Model):
@@ -51,46 +61,80 @@ class TreeNodeRootsMixin(models.Model):
             instance = cls(**kwargs)
 
         parent, priority = cls._get_place(None, position)
-        instance.tn_parent = None
-        instance.tn_priority = priority
+        instance.parent = None
+        instance.priority = priority
         instance.save()
         return instance
 
     @classmethod
-    @cached_method
     def get_roots_queryset(cls):
         """Get root nodes queryset with preloaded children."""
-        qs = cls.objects.filter(tn_parent=None).prefetch_related('tn_children')
-        return qs
+        return cls.objects.filter(parent_id__isnull=True)
+
+    @classmethod
+    def get_roots_pks(cls):
+        """Get a list with all root nodes."""
+        queryset = cls.objects.filter(parent_id__isnull=True)
+        return queryset.values_list("id", flat=True)
 
     @classmethod
     @cached_method
-    def get_roots_pks(cls):
-        """Get a list with all root nodes."""
-        pks = cls.objects.filter(tn_parent=None).values_list("id", flat=True)
-        return list(pks)
-
-    @classmethod
     def get_roots(cls):
         """Get a list with all root nodes."""
-        qs = cls.get_roots_queryset()
-        return list(qs)
+        return list(cls.objects.filter(parent__isnull=True))
 
     @classmethod
     def get_roots_count(cls):
         """Get a list with all root nodes."""
-        return len(cls.get_roots_pks())
+        return cls.objects.filter(parent__isnull=True).count()
 
     @classmethod
     def get_first_root(cls):
         """Return the first root node in the tree or None if it is empty."""
         roots = cls.get_roots_queryset()
-        return roots.fiest() if roots.count() > 0 else None
+        return roots.first()
 
     @classmethod
     def get_last_root(cls):
         """Return the last root node in the tree or None if it is empty."""
         roots = cls.get_roots_queryset()
-        return roots.last() if roots.count() > 0 else None
+        return roots.last()
+
+    @classmethod
+    def sort_roots(cls):
+        """
+        Re-sort root nodes.
+
+        Sorts all nodes with parent_id IS NULL using a raw SQL query with
+        a window function.
+        The new ordering is computed based on the model's sorting_field
+        (defaulting to 'priority').
+        It updates the 'priority' field for all root nodes.
+        """
+        from django.db import connection
+
+        db_table = cls._meta.db_table
+        ordering_field = cls.sorting_field
+
+        # Only root nodes have parent_id IS NULL
+        where_clause = "parent_id IS NULL"
+        params = []
+
+        query = f"""
+            WITH ranked AS (
+                SELECT id,
+                    ROW_NUMBER() OVER (ORDER BY {ordering_field}) - 1 AS new_priority
+                FROM {db_table}
+                WHERE {where_clause}
+            )
+            UPDATE {db_table} AS t
+            SET priority = ranked.new_priority
+            FROM ranked
+            WHERE t.id = ranked.id;
+        """
+
+        with connection.cursor() as cursor:
+            cursor.execute(query, params)
+
 
 # The End

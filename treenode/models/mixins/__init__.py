@@ -10,13 +10,14 @@ from .properties import TreeNodePropertiesMixin
 from .roots import TreeNodeRootsMixin
 from .siblings import TreeNodeSiblingsMixin
 from .tree import TreeNodeTreeMixin
+from .update import RawSQLMixin
 
 
 __all__ = [
     "TreeNodeAncestorsMixin", "TreeNodeChildrenMixin", "TreeNodeFamilyMixin",
     "TreeNodeDescendantsMixin", "TreeNodeLogicalMixin", "TreeNodeNodeMixin",
     "TreeNodePropertiesMixin", "TreeNodeRootsMixin", "TreeNodeSiblingsMixin",
-    "TreeNodeTreeMixin"
+    "TreeNodeTreeMixin", "RawSQLMixin"
 ]
 
 

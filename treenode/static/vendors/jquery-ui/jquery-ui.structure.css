@@ -1,0 +1,16 @@
+/*!
+ * jQuery UI CSS Framework 1.14.1
+ * https://jqueryui.com
+ *
+ * Copyright OpenJS Foundation and other contributors
+ * Released under the MIT license.
+ * https://jquery.org/license
+ *
+ * https://api.jqueryui.com/category/theming/
+ */
+.ui-draggable-handle {
+	touch-action: none;
+}
+.ui-sortable-handle {
+	touch-action: none;
+}

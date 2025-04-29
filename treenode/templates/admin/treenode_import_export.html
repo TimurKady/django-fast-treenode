@@ -1,0 +1,85 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+
+{% block extrastyle %}
+  {{ block.super }}
+  <link rel="stylesheet" href="{% static 'admin/css/forms.css' %}">
+  <link rel="stylesheet" href="{% static 'css/treenode_tabs.css' %}">
+{% endblock %}
+
+{% block content %}
+<h1>Data Exchange Center</h1>
+
+<div class="module">
+  <ul class="tabs">
+    <li class="tab {% if not import_active %}active{% endif %}" data-tab="export">Export</li>
+    <li class="tab {% if import_active %}active{% endif %}" data-tab="import">Import</li>
+  </ul>
+</div>
+
+<div class="tab-content" id="export" {% if import_active %}style="display: none"{% endif %}>
+  <form method="get" action="" class="form-horizontal">
+    <div class="form-row">
+      <label for="format"><strong>Export format:</strong></label>
+      <select name="format" id="format">
+        <option value="csv">CSV</option>
+        <option value="tsv">TSV</option>
+        <option value="xlsx">XLSX</option>
+        <option value="json">JSON</option>
+        <option value="yaml">YAML</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <input type="submit" name="download" class="button default" value="💾 Download">
+      <a href="../" class="button cancel-link">Back to list</a>
+    </div>
+  </form>
+</div>
+
+<div class="tab-content" id="import" {% if not import_active %}style="display: none"{% endif %}>
+  <form method="post" enctype="multipart/form-data" class="form-horizontal">
+    {% csrf_token %}
+    <div class="form-row">
+      <label for="file"><strong>Upload file:</strong></label>
+      <input type="file" name="file" id="file" required>
+    </div>
+    <div class="form-row">
+      <input type="submit" class="button default" value="📂 Import">
+      <a href="../" class="button cancel-link">Back to list</a>
+    </div>
+  </form>
+</div>
+
+{% if errors or created_count or updated_count %}
+  <ul class="messagelist">
+    {% if created_count %}<li class="success">Successfully created: {{ created_count }}</li>{% endif %}
+    {% if updated_count %}<li class="success">Successfully updated: {{ updated_count }}</li>{% endif %}
+    {% if errors %}<li class="error">Errors: {{ errors|length }}</li>{% endif %}
+  </ul>
+  {% if errors %}
+    <div class="module">
+      <ul class="errorlist">
+        {% for error in errors %}
+          <li>{{ error }}</li>
+        {% endfor %}
+      </ul>
+    </div>
+  {% endif %}
+{% endif %}
+
+
+<script>
+  const tabs = document.querySelectorAll('.tab');
+  const contents = document.querySelectorAll('.tab-content');
+
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      tabs.forEach(t => t.classList.remove('active'));
+      contents.forEach(c => c.style.display = 'none');
+      tab.classList.add('active');
+      document.getElementById(tab.dataset.tab).style.display = '';
+    });
+  });
+</script>
+
+{% endblock %}

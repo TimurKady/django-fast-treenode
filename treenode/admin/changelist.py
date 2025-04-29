@@ -1,20 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-TreeNode Sorted ChangeList Class for TreeNodeAdminModel.
+TreeNode Sorted ChangeList Class for TreeNodeModelAdmin.
 
-Version: 2.1.0
+Version: 3.0.0
 Author: Timur Kady
-Email: kaduevtr@gmail.com
+Email: timurkady@yandex.com
 """
 
 from django.contrib.admin.views.main import ChangeList
-from django.core.serializers import serialize, deserialize
+from django.forms.models import modelformset_factory
+from django.db.models import Q
 
-from ..cache import treenode_cache
 
-
-class SortedChangeList(ChangeList):
-    """Custom ChangeList that sorts results in Python (after DB query)."""
+class TreeNodeChangeList(ChangeList):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     def get_ordering(self, request, queryset):
         """
@@ -30,36 +30,18 @@ class SortedChangeList(ChangeList):
             ordering.remove('-pk')
         return tuple(ordering)
 
-    def get_queryset(self, request):
-        """Get QuerySet with select_related."""
-        return super().get_queryset(request).select_related('tn_parent')
-
     def get_results(self, request):
-        """Return sorted results for ChangeList rendering."""
-        # Populate self.result_list with objects from the DB.
         super().get_results(request)
-        result_list = self.result_list
-        result_list_pks = ",".join(map(str, [obj.pk for obj in result_list]))
+        model_name = self.model._meta.model_name
 
-        cache_key = treenode_cache.generate_cache_key(
-            self.model._meta.label,
-            self.get_results.__name__,
-            id(self.__class__),
-            result_list_pks
-        )
+        # Добавляем атрибуты к результатам
+        object_ids = [r.pk for r in self.result_list]
+        objects_dict = {
+            obj.pk: obj
+            for obj in self.model_admin.model.objects.filter(pk__in=object_ids)
+        }
 
-        json_str = treenode_cache.get(cache_key)
-        if json_str:
-            sorted_results = [
-                obj.object for obj in deserialize("json", json_str)
-            ]
-            self.result_list = sorted_results
-            return
-
-        sorted_result = self.model._sort_node_list(result_list)
-        json_str = serialize("json", sorted_result)
-        treenode_cache.set(cache_key, json_str)
-
-        self.result_list = sorted_result
-
-# The End
+        for result in self.result_list:
+            result.obj = objects_dict.get(result.pk)
+            # Добавляем атрибуты строк
+            result.row_attrs = f'data-node-id="{result.pk}" data-parent-of="{result.obj.parent_id or ""}" class="model-{model_name} pk-{result.pk}"'

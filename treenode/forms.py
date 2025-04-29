@@ -10,12 +10,12 @@ Functions:
 - __init__: Initializes the form and filters out invalid parent choices.
 - factory: Dynamically creates a form class for a given TreeNode model.
 
-Version: 2.1.0
+Version: 3.0.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
-from django import forms
+from django.forms import ModelForm
 from django.forms.models import ModelChoiceField, ModelChoiceIterator
 from django.utils.translation import gettext_lazy as _
 
@@ -27,13 +27,10 @@ class SortedModelChoiceIterator(ModelChoiceIterator):
 
     def __iter__(self):
         """Return sorted choices based on tn_order."""
-        qs_list = list(self.queryset.all())
-
-        # Sort objects
-        sorted_objects = self.queryset.model._sort_node_list(qs_list)
+        qs_list = list(self.queryset.order_by('_path').all())
 
         # Iterate yield (value, label) pairs.
-        for obj in sorted_objects:
+        for obj in qs_list:
             yield (
                 self.field.prepare_value(obj),
                 self.field.label_from_instance(obj)
@@ -60,68 +57,51 @@ class SortedModelChoiceField(ModelChoiceField):
     choices = property(_get_choices, _set_choices)
 
 
-class TreeNodeForm(forms.ModelForm):
-    """
-    TreeNode Form Class.
-
-    ModelForm for dynamically determined TreeNode model.
-    Uses TreeWidget and excludes self and descendants from the parent choices.
-    """
-
-    class Meta:
-        """Meta Class."""
-
-        model = None
-        fields = "__all__"
-        widgets = {
-            "tn_parent": TreeWidget()
-        }
+class TreeNodeForm(ModelForm):
+    """TreeNodeModelAdmin Form Class."""
 
     def __init__(self, *args, **kwargs):
-        """Init Method."""
-        super().__init__(*args, **kwargs)
+        """Init Form."""
+        super(TreeNodeForm, self).__init__(*args, **kwargs)
+        self.model = self.instance._meta.model
 
-        model = self._meta.model
+        if 'parent' not in self.fields:
+            return
 
-        if "tn_parent" in self.fields:
-            self.fields["tn_parent"].required = False
-            self.fields["tn_parent"].empty_label = _("Root")
-            queryset = model.objects.all()
-
-            original_field = self.fields["tn_parent"]
-            self.fields["tn_parent"] = SortedModelChoiceField(
-                queryset=queryset,
-                label=original_field.label,
-                widget=original_field.widget,
-                empty_label=original_field.empty_label,
-                required=False
+        exclude_pks = []
+        if self.instance.pk:
+            exclude_pks = self.instance.query(
+                objects='descendants',
+                include_self=True
             )
-            self.fields["tn_parent"].widget.model = queryset.model
 
-            # If there is a current value, set it
-            if self.instance and self.instance.pk and self.instance.tn_parent:
-                self.fields["tn_parent"].initial = self.instance.tn_parent
+        queryset = self.model.objects\
+            .exclude(pk__in=exclude_pks)\
+            .order_by('_path')\
+            .all()
 
-    @classmethod
-    def factory(cls, model):
-        """
-        Create a form class dynamically for the given TreeNode model.
+        self.fields['parent'].queryset = queryset
+        self.fields["parent"].required = False
+        self.fields["parent"].empty_label = _("Root")
 
-        This ensures that the form works with different concrete models.
-        """
-        class Meta:
-            model = model
-            fields = "__all__"
-            widgets = {
-                "tn_parent": TreeWidget(
-                    attrs={
-                        "data-autocomplete-light": "true",
-                        "data-url": "/tree-autocomplete/",
-                    }
-                )
-            }
+        original_field = self.fields["parent"]
 
-        return type(f"{model.__name__}Form", (cls,), {"Meta": Meta})
+        self.fields["parent"] = SortedModelChoiceField(
+            queryset=queryset,
+            label=original_field.label,
+            widget=original_field.widget,
+            empty_label=original_field.empty_label,
+            required=False
+        )
+        self.fields["parent"].widget.model = self.model
 
+        # If there is a current value, set it
+        if self.instance and self.instance.pk and self.instance.parent:
+            self.fields["parent"].initial = self.instance.parent
+
+    class Meta:
+        widgets = {
+            'parent': TreeWidget(),
+        }
 
 # The End

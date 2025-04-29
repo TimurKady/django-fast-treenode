@@ -24,37 +24,22 @@ class TreeWidget(forms.Widget):
     class Media:
         """Meta class to define required CSS and JS files."""
 
-        css = {"all": ("treenode/css/tree_widget.css",)}
-        js = ("treenode/js/tree_widget.js",)
+        css = {"all": ("css/tree_widget.css",)}
+        js = ("js/tree_widget.js",)
 
     def build_attrs(self, base_attrs, extra_attrs=None):
         """Build attributes for the widget."""
         attrs = super().build_attrs(base_attrs, extra_attrs)
-        attrs.setdefault("data-url", reverse("tree_autocomplete"))
-        attrs.setdefault("data-url-children", reverse("tree_children"))
+        attrs.setdefault("data-url", reverse("treenode:tree_autocomplete"))
+        attrs.setdefault("data-url-children", reverse("treenode:tree_children"))
         attrs["class"] = f"{attrs.get('class', '')} tree-widget".strip()
 
-        if "data-forward" not in attrs:
-            model = getattr(self, "model", None)
-
-            if not model and hasattr(self.choices, "queryset"):
-                model = self.choices.queryset.model
-            if model is None:
-                raise ValueError("TreeWidget: model not passed or not defined")
-
-            try:
-                forward_data = json.dumps({"model": model._meta.label})
-                attrs["data-forward"] = forward_data.replace('"', "&quot;")
-            except AttributeError as e:
-                raise ValueError("TreeWidget: invalid Django model") from e
-
-        if self.choices:
-            try:
-                current_value = self.value()
-                if current_value:
-                    attrs["data-selected"] = str(current_value)
-            except Exception:
-                pass
+        model = getattr(self, "model", None)
+        if not model and hasattr(self.choices, "queryset"):
+            model = self.choices.queryset.model
+        elif model is None:
+            raise ValueError("TreeWidget: model not passed or not defined")
+        attrs["data-model"] = model._meta.label
 
         return attrs
 
@@ -66,32 +51,30 @@ class TreeWidget(forms.Widget):
         """
         return []
 
+    def id_for_label(self, id_):
+        """Return label for field."""
+        return f"{id_}_search"
+
+    def label_from_instance(self, obj):
+        """Return instance label."""
+        return str(obj)
+
     def render(self, name, value, attrs=None, renderer=None):
         """Render widget as a hidden input + tree container structure."""
-
         attrs = self.build_attrs(attrs)
         attrs["name"] = name
         attrs["type"] = "hidden"
-        if value:
-            attrs["value"] = str(value)
+        attrs["value"] = str(value) if value else ""
 
         # If value is set, try to get string representation of instance,
         # otherwise print "Root"
-        if value not in [None, "", "None"]:
-            try:
-                from django.apps import apps
-                # Define the model: first self.model if it is defined,
-                # otherwise via choices
-                model = getattr(self, "model", None)
-                if model is None and hasattr(self, "choices") and getattr(self.choices, "queryset", None):
-                    model = self.choices.queryset.model
-                if model is not None:
-                    instance = model.objects.get(pk=value)
-                    selected_value = str(instance)
-                else:
-                    selected_value = str(value)
-            except Exception:
-                selected_value = str(value)
+        if str(value).lower() not in ("", "none"):
+            model = self.model or self.choices.queryset.model
+            instance = model.objects.filter(pk=value).first()
+            if instance:
+                selected_value = str(instance)
+            else:
+                selected_value = _("Root")
         else:
             selected_value = _("Root")
 
@@ -111,7 +94,7 @@ class TreeWidget(forms.Widget):
             <div class="tree-widget-dropdown">
                 <div class="tree-search-wrapper">
                     <span class="tree-search-icon">&#x1F50E;&#xFE0E;</span>
-                    <input type="text" class="tree-search" placeholder="{search_placeholder}" />
+                    <input id="id_parent_search" type="text" class="tree-search" placeholder="{search_placeholder}" />
                     <button type="button" class="tree-search-clear">&times;</button>
                 </div>
                 <ul class="tree-list"></ul>

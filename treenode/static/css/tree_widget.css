@@ -1,0 +1,232 @@
+/* 
+TreeNode Select2 Widget Stylesheet
+
+This stylesheet customizes the Select2 dropdown widget for hierarchical 
+data representation in Django admin. It ensures compatibility with both 
+light and dark themes.
+
+Features:
+- Dark theme styling for the dropdown and selected items.
+- Consistent color scheme for better readability.
+- Custom styling for search fields and selection indicators.
+- Enhances usability in tree-based data selection.
+
+Main styles:
+.tree-widget-display: styles the display area of ​​the selected item, adding
+ padding, borders, and background.
+.tree-dropdown-arrow: styles the dropdown arrow.
+.tree-widget-dropdown: defines the style of the dropdown, including positioning,
+ size, and shadows.
+.tree-search-wrapper: decorates the search area inside the dropdown.
+.tree-search: styles the search input.
+.tree-clear-button: button to clear the search input.
+.tree-list and .tree-node: styles for the list and its items.
+.expand-button: button to expand child elements.
+
+Dark theme:
+Uses the .dark-theme class to apply dark styles. Changes the background,
+borders, and text color for the corresponding elements. Ensures comfortable use
+of the widget in dark mode.
+
+Version: 2.0.0
+Author: Timur Kady
+Email: timurkady@yandex.com
+
+*/
+
+.form-row.field-parent {
+    position: relative;
+    overflow: visible !important;
+    z-index: auto;
+}
+
+.tree-widget {
+    position: relative;
+    width: 100%;
+    font-family: Arial, sans-serif;
+}
+
+.tree-widget-display {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    background-color: #fff;
+    cursor: pointer;
+    transition: border-color 0.2s;
+}
+
+.tree-widget-display:hover {
+    border-color: #333;
+}
+
+.tree-dropdown-arrow {
+    font-size: 0.8em;
+    color: #888;
+    display: inline-block;
+    height: 100%;
+    background-color: lightgrey;
+    padding: 8px;
+    margin: 0;
+    border-radius: 0 4px 4px 0;
+}
+
+.tree-widget-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 242px;
+    overflow-y: auto;
+    border: 1px solid #aaa;
+    border-top: none;
+    border-radius: 0 3px 3px 0;
+    background-color: #fff;
+    z-index: 1000;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tree-search-wrapper {
+    display: flex;
+    align-items: center;
+    padding: 6px;
+    border-bottom: 1px solid #ddd;
+    background-color: #f9f9f9;
+}
+
+.tree-search-icon {
+    margin-right: 6px;
+    font-size: 1.3em;
+}
+
+.tree-search {
+    flex-grow: 1;
+    padding: 6px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1em;
+}
+
+.tree-search-clear{
+    border: none;
+    border-radius: 3px;
+    background: none;
+    font-size: 1.8em;
+    cursor: pointer; 
+}
+
+.tree-clear-button {
+    background: none;
+    border: none;
+    font-size: 1.2em;
+    color: #888;
+    cursor: pointer;
+    margin-left: 6px;
+}
+
+.tree-list {
+    list-style: none;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+.tree-node {
+    display: block !important;
+    padding: 6px 0px !important;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.tree-node:hover {
+    background-color: #f0f0f0;
+}
+
+.tree-node[data-level="1"] {
+    padding-left: 20px;
+}
+
+.tree-node[data-level="2"] {
+    padding-left: 40px;
+}
+
+.expand-button {
+    display: inline-block;
+    width: 18px;
+    height: 18px;
+    background: var(--button-bg);
+    color: var(--button-fg);
+    border-radius: 3px;
+    border: none;
+    margin: 0px 5px;
+    cursor: pointer;
+    font-size: 12px;
+    line-height: 18px;
+    padding: 0px;
+    opacity: 0.8;
+}
+
+.no-expand {
+    display: inline-block;
+    width: 18px;
+    height: 18px;    
+    border: none;
+    margin: 0px 5px;
+}
+
+.selected-node {
+    margin: 6px 12px;
+}
+
+/* Тёмная тема */
+.dark-theme .tree-widget-display {
+    background-color: #333;
+    border-color: #555;
+    color: #eee;
+}
+
+.dark-theme .tree-dropdown-arrow {
+    color: #ccc;
+}
+
+.dark-theme .tree-widget-dropdown {
+    background-color: #444;
+    border-color: #555;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+.dark-theme .tree-search-wrapper {
+    background-color: #555;
+    border-bottom-color: #666;
+}
+
+.dark-theme .tree-search {
+    background-color: #666;
+    border-color: #777;
+    color: #eee;
+}
+
+.dark-theme .tree-search::placeholder {
+    color: #ccc;
+}
+
+.dark-theme .tree-clear-button {
+    color: #ccc;
+}
+
+.dark-theme .tree-node {
+    color: #eee;
+}
+
+.dark-theme .tree-node:hover {
+    background-color: #555;
+}
+
+.dark-theme .expand-button {
+    color: #ccc;
+}
+
+.dark-theme .selected-node {
+    color: #eee;
+}

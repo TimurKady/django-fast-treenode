@@ -4,43 +4,37 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-fast-treenode"
-version = "2.1.5"
-description = "Application for supporting tree (hierarchical) data structure in Django projects"
+version = "3.0.0"
+description = "Treenode Framework for supporting tree (hierarchical) data structure in Django projects"
 readme = "README.md"
 authors = [{ name = "Timur Kady", email = "timurkady@yandex.com" }]
 license = { file = "LICENSE" }
 requires-python = ">=3.9"
 dependencies = [
-    "Django >=4.0",
-    "django-widget-tweaks >= 1.5",
-    "msgpack >= 1.1"
+    'Django>=4.0',
+    'msgpack>=1.0.0',
+    'openpyxl>=3.0.0',
+    'pyyaml>=5.1',
 ]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
-    "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
-    "Framework :: Django",
-    "Framework :: Django :: 4.0",
-    "Framework :: Django :: 4.1",
-    "Framework :: Django :: 4.2",
-    "Framework :: Django :: 5.0",
-    "Framework :: Django :: 5.1",
-    "Framework :: Django :: 5.2",
-    "License :: OSI Approved :: MIT License",
-    "Operating System :: OS Independent"
-]
-
-[project.optional-dependencies]
-import_export = [
-    "openpyxl",
-    "pyyaml",
-    "xlsxwriter"
+    'Development Status :: 5 - Production/Stable',
+    'Intended Audience :: Developers',
+    'Programming Language :: Python :: 3',
+    'Programming Language :: Python :: 3.9',
+    'Programming Language :: Python :: 3.10',
+    'Programming Language :: Python :: 3.11',
+    'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
+    'Programming Language :: Python :: 3.14',
+    'Framework :: Django',
+    'Framework :: Django :: 4.0',
+    'Framework :: Django :: 4.1',
+    'Framework :: Django :: 4.2',
+    'Framework :: Django :: 5.0',
+    'Framework :: Django :: 5.1',
+    'Framework :: Django :: 5.2',
+    'License :: OSI Approved :: MIT License',
+    'Operating System :: OS Independent',
 ]
 
 [project.urls]

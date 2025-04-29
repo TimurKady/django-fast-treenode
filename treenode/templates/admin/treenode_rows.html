@@ -1,0 +1,57 @@
+{% load i18n %}
+
+<div class="results">
+  <table id="result_list">
+
+
+<thead>
+  <tr>
+    {% for h in headers %}
+      <th scope="col"{{ h.class_attrib|safe }}>
+        {% if "action-checkbox-column" in h.class_attrib %}
+          <div class="text">
+            <span>
+              <input type="checkbox" id="action-toggle" aria-label="{% translate 'Select all objects on this page for an action' %}">
+            </span>
+          </div>
+          <div class="clear"></div>
+        {% else %}
+          {% if h.sortable %}
+            <div class="sortoptions">
+              {% if h.url_remove %}
+                <a class="sortremove" href="{{ h.url_remove }}" title="{% translate 'Remove from sorting' %}"></a>
+              {% endif %}
+              {% if h.url_toggle %}
+                <a href="{{ h.url_toggle }}" class="toggle {% if h.ascending %}ascending{% else %}descending{% endif %}" title="{% translate 'Toggle sorting' %}"></a>
+              {% endif %}
+            </div>
+          {% else %}
+            <div class="sortoptions"></div>
+          {% endif %}
+
+          <div class="text">
+            {% if h.sortable %}
+              <a href="{{ h.url_primary }}">{{ h.text|safe }}</a>
+            {% else %}
+              <a href="#">{{ h.text|safe }}</a>
+            {% endif %}
+          </div>
+          <div class="clear"></div>
+        {% endif %}
+      </th>
+    {% endfor %}
+  </tr>
+</thead>
+
+
+    <tbody>
+      {% for row in rows %}
+        <tr {{ row.attrs|safe }}>
+          {% for cell in row.cells %}
+            {{ cell }}
+          {% endfor %}
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

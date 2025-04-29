@@ -76,7 +76,7 @@ This method ensures that the form correctly associates with different tree model
 ### Using TreeWidget Widget
 
 #### The TreeWidget Class
-The `TreeWidget` class is a **custom Select2-like widget** that enables hierarchical selection in forms. While it is used inside the Django admin panel by default, it can **also be used in regular forms** outside the admin panel.
+The `TreeWidget` class is a **custom Select2-like widget** that enables hierarchical selection in forms. 
 
 ##### widgets.py
 
@@ -93,11 +93,10 @@ class CategorySelectionForm(forms.Form):
     )
 ```
 
-Important Notes:
-
-- **Requires jQuery**: The widget relies on AJAX requests, so ensure jQuery is available when using it outside Django’s admin.
-- **Dynamically Fetches Data**: It loads the tree structure asynchronously, preventing performance issues with large datasets.
-- **Customizable Data Source**: The `data-url` attribute can be adjusted to fetch tree data from a custom endpoint.
+!!! note
+    - **Customizable Data Source**: The `data-url` attribute can be adjusted to fetch tree data from a custom endpoint.
+    - **Requires jQuery**: The widget relies on AJAX requests, so ensure jQuery is available when using it outside Django’s admin.
+    - **Dynamically Fetches Data**: It loads the tree structure asynchronously, preventing performance issues with large datasets.
 
 If you plan to use this widget in non-admin templates, make sure the necessary **JavaScript and CSS files** are included:
 ```html
