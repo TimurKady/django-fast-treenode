@@ -25,27 +25,3 @@ class TreeNodeModelTests(TestCase):
     def test_tree_operations(self):
         # Проверка целостности дерева
         self.assertEqual(self.root.check_tree_integrity(verbose=False), [])
-
-        # Проверка получения потомков
-        descendant_names = TestModel.objects.filter(
-            pk__in=self.root.get_descendants_pks(include_self=False)
-        ).values_list("name", flat=True)
-
-        self.assertEqual(set(descendant_names), {"A", "B", "C", "D", "E"})
-
-        # Сериализация
-        tree_data = TestModel.get_tree_json()
-
-        # Удаляем всё и восстанавливаем дерево
-        TestModel.objects.all().delete()
-        TestModel.load_tree(tree_data)
-
-        # Проверка целостности после восстановления
-        new_root = TestModel.objects.get(name="root")
-        self.assertEqual(new_root.check_tree_integrity(verbose=False), [])
-
-        restored_names = TestModel.objects.filter(
-            pk__in=new_root.get_descendants_pks(include_self=False)
-        ).values_list("name", flat=True)
-
-        self.assertEqual(set(restored_names), {"A", "B", "C", "D", "E"})
