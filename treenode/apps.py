@@ -18,7 +18,7 @@ class TreeNodeConfig(AppConfig):
     """Config Class."""
 
     default_auto_field = "django.db.models.BigAutoField"
-    name = "supertree"
+    name = "treenode"
 
     def ready(self):
         """Ready method."""
