@@ -54,4 +54,6 @@ jobs:
           POSTGRES_PORT: 5432
         run: |
           python tests/manage.py makemigrations --noinput
+          python tests/manage.py migrate --noinput
           python tests/manage.py test
+
