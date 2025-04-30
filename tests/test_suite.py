@@ -52,6 +52,8 @@ class TreeNodeModelTests(TestCase):
         ancestors = set(
             self.c.get_ancestors_queryset().values_list("pk", flat=True)
         )
+
+        self.root.check_tree_integrity()
         expected_anc = {self.root.pk, self.a.pk, self.c.pk}
         self.assertEqual(ancestors, expected_anc)
 
