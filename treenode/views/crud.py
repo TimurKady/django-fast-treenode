@@ -10,13 +10,16 @@ Email: timurkady@yandex.com
 """
 
 import json
-
+import logging
+from django.core.exceptions import ValidationError
 from django.forms.models import model_to_dict
 from django.http import (
     JsonResponse, HttpResponseBadRequest, HttpResponseNotFound,
 )
-
+from django.utils.translation import gettext_lazy as _
 from django.views import View
+
+logger = logging.getLogger("treenode.views.crud")
 
 
 class TreeNodeBaseAPIView(View):
@@ -128,8 +131,14 @@ class TreeNodeBaseAPIView(View):
             obj.full_clean()
             obj.save()
             return JsonResponse(model_to_dict(obj), status=201)
-        except Exception as e:
-            return HttpResponseBadRequest(str(e))
+        except ValidationError as ve:
+            # give the client clear field errors
+            return JsonResponse({"errors": ve.message_dict}, status=400)
+        except Exception:
+            # log full information for development
+            logger.exception("Failed to create node")
+            return JsonResponse(
+                {"error": _("Failed to create node")}, status=400)
 
     def put(self, request, pk):
         """
@@ -155,10 +164,16 @@ class TreeNodeBaseAPIView(View):
             obj.full_clean()
             obj.save()
             return JsonResponse(model_to_dict(obj))
+        except ValidationError as ve:
+            return JsonResponse({"errors": ve.message_dict}, status=400)
         except self.model.DoesNotExist:
-            return HttpResponseNotFound("Node not found.")
-        except Exception as e:
-            return HttpResponseBadRequest(str(e))
+            # give the client clear field errors
+            return HttpResponseNotFound(_("Node not found (pk={pk})."))
+        except Exception:
+            # log full information for development
+            logger.exception("Error replacing node %s", pk)
+            return JsonResponse(
+                {"error": _("Failed to update node")}, status=400)
 
     def patch(self, request, pk):
         """
@@ -200,10 +215,16 @@ class TreeNodeBaseAPIView(View):
                 "id": obj.pk,
                 "cascade": cascade
             })
+        except ValidationError as ve:
+            # give the client clear field errors|
+            return JsonResponse({"errors": ve.message_dict}, status=400)
         except self.model.DoesNotExist:
-            return HttpResponseNotFound("Node not found.")
-        except Exception as e:
-            return HttpResponseBadRequest(str(e))
+            return HttpResponseNotFound(_("Node not found (pk={pk})."))
+        except Exception:
+            # log full information for development
+            logger.exception("Error deleting node %s", pk)
+            return JsonResponse(
+                {"error": _("Error deleting node")}, status=400)
 
 
 # The End
