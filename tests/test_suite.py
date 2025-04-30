@@ -69,6 +69,11 @@ class TreeNodeModelTests(TestCase):
             self.root.pk, self.a.pk, self.b.pk, self.c.pk, self.d.pk
         }
 
+        test = descendants == expected_desc
+        print("test=", test)
+        print('types in descendants:', {type(x) for x in descendants})
+        print('types in expected:',  {type(x) for x in expected_desc})
+
         print('>>>> descendants (via queryset)=', descendants)
         print('>>>> expected_anc=', expected_desc)
 
