@@ -33,11 +33,13 @@ class TreeNodeDescendantsMixin(models.Model):
         """Get the descendants queryset."""
         path = self.get_order()  # calls refresh and gets the current _path
         from_path = path + '.'
-        to_path = path + '/'
-        options = {'_path__gte': from_path, '_path__lt': to_path}
-        if depth:
-            options["_depth__lt"] = depth
-        queryset = self._meta.model.objects.filter(**options)
+        # to_path = path + '/'
+
+        # options = {'_path__gte': from_path, '_path__lt': to_path}
+        # if depth:
+        #    options["_depth__lt"] = depth
+        # queryset = self._meta.model.objects.filter(**options)
+        queryset = self._meta.model.objects.filter(_path__startswith=from_path)
 
         if include_self:
             return self._meta.model.objects.filter(pk=self.pk) | queryset
