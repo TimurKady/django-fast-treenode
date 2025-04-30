@@ -67,6 +67,10 @@ class TreeNodeModelTests(TestCase):
             self.root.pk, self.a.pk, self.b.pk, self.c.pk, self.d.pk
         }
         print('>>>> expected_anc=', expected_desc)
+
+        tree_data = TestModel.get_tree_json()
+        print('>>>> tree_data=', tree_data)
+
         self.assertEqual(descendants, expected_desc)
 
     # --- 4. Moving a node ------------------------------------------------
