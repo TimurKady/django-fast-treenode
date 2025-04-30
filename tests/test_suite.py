@@ -49,6 +49,9 @@ class TreeNodeModelTests(TestCase):
     # --- 3. Ancestors and Descendants ------------------------------------------------
 
     def test_ancestors_and_descendants(self):
+        TestModel.tasks.add("update", self.parent_id)
+        TestModel.tasks.run()
+
         ancestors = set(
             self.c.get_ancestors_queryset().values_list("pk", flat=True)
         )
