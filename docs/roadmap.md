@@ -20,13 +20,9 @@ The 3.x release series will focus on strengthening TreeNode Framework in terms o
 
     Focus: enhance operational safety and optimize workflows for large-scale trees.
 
-    - **Safe Import Preview**:  
+    - **Safe Import Preview**: Implement a staging layer for imports, allowing users to review and confirm imported data before committing changes.
 
-      Implement a staging layer for imports, allowing users to review and confirm imported data before committing changes.
-
-    - **Incremental Export**:  
-
-      Support selective export of nodes modified after a specified date or revision marker.
+    - **Incremental Export**: Support selective export of nodes modified after a specified date or revision marker.
 
   
 * **Version 3.3 — Soft Deletion Support**
