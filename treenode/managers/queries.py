@@ -86,6 +86,48 @@ class TreeQuery:
 
     def get_descendants(self, include_self, depth):
         """
+        Build SQL for the 'descendants'.
+
+        Relationship using startswith-like logic.
+        Avoids locale-dependent string comparison issues by relying on
+        _path LIKE 'xxx.%'.
+        """
+        like_pattern = self.node._path + '.%'  # emulate startswith
+
+        base_sql = f"""
+            SELECT id, _depth, priority
+            FROM {self.db_table}
+            WHERE _path LIKE %s
+        """
+        params = [like_pattern]
+
+        if depth is not None:
+            depth_val = getattr(self.node, "_depth", None)
+            if depth_val is None:
+                depth_val = type(self.node).objects.values_list(
+                    "_depth", flat=True).get(pk=self.node.pk)
+            base_sql += " AND _depth <= %s"
+            params.append(depth_val + depth)
+
+        if include_self:
+            sql_self = f"""
+                SELECT id, _depth, priority
+                FROM {self.db_table}
+                WHERE id = %s
+            """
+            union_sql, union_params = self.wrap_union_all([
+                (base_sql, params),
+                (sql_self, [self.node.pk])
+            ])
+        else:
+            union_sql, union_params = base_sql, params
+
+        union_sql = self.order_by(union_sql, "_depth, priority")
+        return union_sql, union_params
+
+    '''
+    def get_descendants(self, include_self, depth):
+        """
         Build SQL for the 'descendants' relationship.
 
         Optionally limits the depth, and includes the current node if requested.
@@ -113,6 +155,7 @@ class TreeQuery:
 
         union_sql = self.order_by(union_sql, "_depth, priority")
         return union_sql, union_params
+    '''
 
     def get_ancestors(self, include_self):
         """

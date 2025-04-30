@@ -5,7 +5,7 @@ Tree update task compiler class.
 Compiles tasks to low-level SQL to update the materialized path (_path), depth
 (_depth), and node order (priority) when they are shifted or moved.
 
-Version: 3.0.0
+Version: 3.1.0
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -34,9 +34,11 @@ class TreePathCompiler:
         _depth) are recalculated.
         """
         db_table = model._meta.db_table
+        # Will eliminate the risk if the user names the model order or user.
+        qname = connection.ops.quote_name(db_table)
 
         sorting_field = model.sorting_field
-        sorting_fields = ["priority", "id"] if sorting_field == "priority" else [sorting_field]  # noqa: D501
+        sorting_fields = ["priority", "id"] if sorting_field == "priority" else [sorting_field]  # noqa: D5017
         sort_expr = ", ".join([
             f"c.{field}" if "." not in field else field
             for field in sorting_fields
@@ -44,7 +46,7 @@ class TreePathCompiler:
 
         cte_header = "(id, parent_id, new_priority, new_path, new_depth)"
 
-        row_number_expr = "ROW_NUMBER() OVER (ORDER BY {sort_expr}) - 1"
+        row_number_expr = f"ROW_NUMBER() OVER (ORDER BY {sort_expr}) - 1"
         hex_expr = SQLCompat.to_hex(row_number_expr)
         lpad_expr = SQLCompat.lpad(hex_expr, SEGMENT_LENGTH, "'0'")
 
@@ -57,7 +59,7 @@ class TreePathCompiler:
                     {row_number_expr} AS new_priority,
                     {new_path_expr} AS new_path,
                     0 AS new_depth
-                FROM {db_table} AS c
+                FROM {qname} AS c
                 WHERE c.parent_id IS NULL
             """
             params = []
@@ -70,16 +72,18 @@ class TreePathCompiler:
                     {row_number_expr} AS new_priority,
                     {path_expr} AS new_path,
                     p._depth + 1 AS new_depth
-                FROM {db_table} c
-                JOIN {db_table} p ON c.parent_id = p.id
+                FROM {qname} c
+                JOIN {qname} p ON c.parent_id = p.id
                 WHERE p.id = %s
             """
             params = [parent_id]
 
-        recursive_row_number_expr = "ROW_NUMBER() OVER (PARTITION BY c.parent_id ORDER BY {sort_expr}) - 1"   # noqa: D501
+        recursive_row_number_expr = f"ROW_NUMBER() OVER (PARTITION BY c.parent_id ORDER BY {sort_expr}) - 1"
         recursive_hex_expr = SQLCompat.to_hex(recursive_row_number_expr)
-        recursive_lpad_expr = SQLCompat.lpad(recursive_hex_expr, SEGMENT_LENGTH, "'0'")   # noqa: D501
-        recursive_path_expr = SQLCompat.concat("t.new_path", "'.'", recursive_lpad_expr)   # noqa: D501
+        recursive_lpad_expr = SQLCompat.lpad(
+            recursive_hex_expr, SEGMENT_LENGTH, "'0'")
+        recursive_path_expr = SQLCompat.concat(
+            "t.new_path", "'.'", recursive_lpad_expr)
 
         recursive_sql = f"""
             SELECT
@@ -88,27 +92,22 @@ class TreePathCompiler:
                 {recursive_row_number_expr} AS new_priority,
                 {recursive_path_expr} AS new_path,
                 t.new_depth + 1 AS new_depth
-            FROM {db_table} c
+            FROM {qname} c
             JOIN tree_cte t ON c.parent_id = t.id
         """
 
-        final_sql = f"""
-            WITH RECURSIVE tree_cte {cte_header} AS (
-                {base_sql}
-                UNION ALL
-                {recursive_sql}
-            )
-            UPDATE {db_table} AS orig
-            SET
-                priority = t.new_priority,
-                _path = t.new_path,
-                _depth = t.new_depth
-            FROM tree_cte t
-            WHERE orig.id = t.id;
-        """
+        final_sql = SQLCompat.update_from(
+            db_table=db_table,
+            cte_header=cte_header,
+            base_sql=base_sql,
+            recursive_sql=recursive_sql,
+            update_fields=["priority", "_path", "_depth"]
+        )
 
         with connection.cursor() as cursor:
-            cursor.execute(final_sql.format(sort_expr=sort_expr), params)
+            # Make params read-only
+            params = tuple(params)
+            cursor.execute(final_sql, params)
 
 
 # The End

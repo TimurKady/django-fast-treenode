@@ -147,14 +147,14 @@ The project is designed for long-term compatibility with future Django versions 
 
 All SQL queries are adapted through a universal compatibility layer, ensuring support for major databases without the need to rewrite SQL code.
 
-| Database         | Minimum Version | Status              | Notes |
-|------------------|------------------|---------------------|-------|
-| **PostgreSQL**    | ≥ 9.4            | Full tested     | Recommended ≥ 12 |
-| **MySQL**         | ≥ 8.0            | Partially tested | |
-| **MariaDB**       | ≥ 10.2.2         | Not tested      | |
-| **SQLite**        | ≥ 3.25.0         | Partially tested | |
-| **Oracle**        | ≥ 12c            | Full tested     | Recommended ≥ 19c |
-| **MS SQL Server** | ≥ 2012           | Partially tested| |
+| Database          | Minimum Version   | Status          | Notes             |
+|:------------------|:------------------|:----------------|:-------------------|
+| **PostgreSQL**    | ≥ 10.0           | Full tested      | Recommended ≥ 12  |
+| **MySQL**         | ≥ 8.0            | Partially tested |                   |
+| **MariaDB**       | ≥ 10.5           | Not tested       |                   |
+| **SQLite**        | ≥ 3.35.0         | Partially tested |                   |
+| **Oracle**        | ≥ 12c R2         | Full tested      | Recommended ≥ 19c |
+| **MS SQL Server** | ≥ 2016           | Partially tested |                   |
 
 
 The project is **ready for production use** across all modern versions of Django and major relational databases without manual SQL corrections.
