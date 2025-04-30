@@ -65,12 +65,11 @@ class TreeNodeModelTests(TestCase):
             self.root.get_descendants_queryset(include_self=True)
             .values_list("pk", flat=True)
         )
-        print('>>>> descendants (via queryset)=', descendants)
-        print('>>>> descendants (via SQL)=',
-              self.root.get_descendants_pks(include_self=True))
         expected_desc = {
             self.root.pk, self.a.pk, self.b.pk, self.c.pk, self.d.pk
         }
+
+        print('>>>> descendants (via queryset)=', descendants)
         print('>>>> expected_anc=', expected_desc)
 
         self.assertEqual(descendants, expected_desc)
