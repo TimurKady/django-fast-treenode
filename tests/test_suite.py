@@ -1,7 +1,7 @@
 # tests/test_treenode.py
 from django.test import TestCase
 from django.db import transaction
-from .models import TestNode
+from .models import TestModel
 
 PATH_DIGITS = 3
 
@@ -21,16 +21,16 @@ class TreeNodeModelTests(TestCase):
         Django сделает его снимок, и в каждом тесте база
         будет возвращаться в это состояние автоматически.
         """
-        cls.root = TestNode.objects.create(name="root", priority=0)
-        cls.a = TestNode.objects.create(name="A", parent=cls.root, priority=1)
-        cls.b = TestNode.objects.create(name="B", parent=cls.root, priority=2)
-        cls.c = TestNode.objects.create(name="C", parent=cls.a, priority=1)
-        cls.d = TestNode.objects.create(name="D", parent=cls.a, priority=2)
+        cls.root = TestModel.objects.create(name="root", priority=0)
+        cls.a = TestModel.objects.create(name="A", parent=cls.root, priority=1)
+        cls.b = TestModel.objects.create(name="B", parent=cls.root, priority=2)
+        cls.c = TestModel.objects.create(name="C", parent=cls.a, priority=1)
+        cls.d = TestModel.objects.create(name="D", parent=cls.a, priority=2)
 
     # --- 1. Creating nodes -------------------------------------------------
 
     def test_count_after_creation(self):
-        self.assertEqual(TestNode.objects.count(), 5)
+        self.assertEqual(TestModel.objects.count(), 5)
 
     # --- 2. _path and _depth --------------------------------------------------
 
@@ -80,5 +80,5 @@ class TreeNodeModelTests(TestCase):
 
     def test_delete_subtree(self):
         self.a.delete()
-        self.assertFalse(TestNode.objects.filter(pk=self.a.pk).exists())
-        self.assertTrue(TestNode.objects.filter(pk=self.c.pk).exists())
+        self.assertFalse(TestModel.objects.filter(pk=self.a.pk).exists())
+        self.assertTrue(TestModel.objects.filter(pk=self.c.pk).exists())
