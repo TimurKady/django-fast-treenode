@@ -51,9 +51,6 @@ class TreeNodeModelTests(TestCase):
     def test_ancestors_and_descendants(self):
         TestModel.tasks.add("update", None)
         TestModel.tasks.run()
-        tree_data = TestModel.get_tree_json()
-        print('>>>> tree_data=', tree_data)
-        self.root.check_tree_integrity()
 
         ancestors = set(
             self.c.get_ancestors_queryset().values_list("pk", flat=True)
@@ -92,5 +89,13 @@ class TreeNodeModelTests(TestCase):
 
     def test_delete_subtree(self):
         self.a.delete()
+
+        tree_data = TestModel.get_tree_json()
+        print('>>>> tree_data=', tree_data)
+        self.root.check_tree_integrity()
+        qs = TestModel.objects.filter(pk__in=[self.a.pk, self.c.pk]).all()
+
+        print(qs)
+
         self.assertFalse(TestModel.objects.filter(pk=self.a.pk).exists())
         self.assertTrue(TestModel.objects.filter(pk=self.c.pk).exists())
