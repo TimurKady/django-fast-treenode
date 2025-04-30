@@ -178,7 +178,7 @@ def export_tree(node):
     children = node.get_children()
     return {
         "id": node.id,
-        "tn_parent": node.get_parent().id if node.get_parent() else None,
+        "parent": node.get_parent().id if node.get_parent() else None,
         "name": node.name,
         # Continue the list by inserting the required model fields
         # Do not export the `children` field
@@ -192,7 +192,7 @@ with open("tree_data.json", "w") as f:
     json.dump(data, f, indent=4)
 ```
 
-This code exports your structure to `tree_data.json` file. JSON preserves the id → tn_parent relationship, but without children.
+This code exports your structure to `tree_data.json` file. JSON preserves the id → parent relationship, but without children.
 
 Now clear the table:
 ```python
@@ -229,9 +229,9 @@ class Category(TreeNodeModel):
 ```
 Be sure to add `treenode_display_field` as `django-fast-treenode` uses it to display nodes in the admin panel. 
 
-The `treenode_sort_field` attribute specifies the tree sorting order. The default value of this field is `None`. It will sort by the internal field `tn_priority`.
+The `treenode_sort_field` attribute specifies the tree sorting order. The default value of this field is `None`. It will sort by the internal field `priority`.
 
-The `tn_priority` value will be generated automatically if not specified during import. It will either be set as nodes are inserted into the tree (in the order in which the nodes will appear in the imported data), or after they are inserted, depending on the results of sorting by the field specified in the `treenode_sort_field` attribute.
+The `priority` value will be generated automatically if not specified during import. It will either be set as nodes are inserted into the tree (in the order in which the nodes will appear in the imported data), or after they are inserted, depending on the results of sorting by the field specified in the `treenode_sort_field` attribute.
 
 > Note: sorting functions are available for `django-tree-node` version 2.3 and higher.
 
