@@ -51,12 +51,13 @@ class TreeNodeModelTests(TestCase):
     def test_ancestors_and_descendants(self):
         TestModel.tasks.add("update", None)
         TestModel.tasks.run()
+        tree_data = TestModel.get_tree_json()
+        print('>>>> tree_data=', tree_data)
+        self.root.check_tree_integrity()
 
         ancestors = set(
             self.c.get_ancestors_queryset().values_list("pk", flat=True)
         )
-
-        self.root.check_tree_integrity()
         expected_anc = {self.root.pk, self.a.pk, self.c.pk}
         self.assertEqual(ancestors, expected_anc)
 
@@ -64,16 +65,13 @@ class TreeNodeModelTests(TestCase):
             self.root.get_descendants_queryset(include_self=True)
             .values_list("pk", flat=True)
         )
-        print('>>>> ancestors (via queryset)=', descendants)
-        print('>>>> ancestors (via SQL)=',
+        print('>>>> descendants (via queryset)=', descendants)
+        print('>>>> descendants (via SQL)=',
               self.root.get_descendants_pks(include_self=True))
         expected_desc = {
             self.root.pk, self.a.pk, self.b.pk, self.c.pk, self.d.pk
         }
         print('>>>> expected_anc=', expected_desc)
-
-        tree_data = TestModel.get_tree_json()
-        print('>>>> tree_data=', tree_data)
 
         self.assertEqual(descendants, expected_desc)
 
