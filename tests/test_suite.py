@@ -52,18 +52,18 @@ class TreeNodeModelTests(TestCase):
         ancestors = set(
             self.c.get_ancestors_queryset().values_list("pk", flat=True)
         )
-        print('>>>> ancestors=', ancestors)
         expected_anc = {self.root.pk, self.a.pk, self.c.pk}
-        print('>>>> expected_anc=', expected_anc)
         self.assertEqual(ancestors, expected_anc)
 
         descendants = set(
             self.root.get_descendants_queryset(include_self=True)
             .values_list("pk", flat=True)
         )
+        print('>>>> ancestors=', descendants)
         expected_desc = {
             self.root.pk, self.a.pk, self.b.pk, self.c.pk, self.d.pk
         }
+        print('>>>> expected_anc=', expected_desc)
         self.assertEqual(descendants, expected_desc)
 
     # --- 4. Moving a node ------------------------------------------------
