@@ -88,7 +88,7 @@ class TreeNodeModelTests(TestCase):
     # --- 5. Removing a node ---------------------------------------------------
 
     def test_delete_subtree(self):
-        self.a.delete()
+        self.a.delete(cascade=False)
 
         tree_data = TestModel.get_tree_json()
         print('>>>> tree_data=', tree_data)
