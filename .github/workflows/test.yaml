@@ -57,5 +57,5 @@ jobs:
         run: |
           python tests/manage.py makemigrations --noinput
           python tests/manage.py migrate --noinput
-          python tests/manage.py test
+          python tests/manage.py test --debug-mode -v2
 

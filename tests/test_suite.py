@@ -27,6 +27,9 @@ class TreeNodeModelTests(TestCase):
         cls.c = TestModel.objects.create(name="C", parent=cls.a, priority=1)
         cls.d = TestModel.objects.create(name="D", parent=cls.a, priority=2)
 
+        _ = cls.a.get_order()
+        _ = cls.c.get_order()
+
     # --- 1. Creating nodes -------------------------------------------------
 
     def test_count_after_creation(self):
@@ -49,7 +52,9 @@ class TreeNodeModelTests(TestCase):
         ancestors = set(
             self.c.get_ancestors_queryset().values_list("pk", flat=True)
         )
+        print('>>>> ancestors=', ancestors)
         expected_anc = {self.root.pk, self.a.pk, self.c.pk}
+        print('>>>> expected_anc=', expected_anc)
         self.assertEqual(ancestors, expected_anc)
 
         descendants = set(
