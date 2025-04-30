@@ -56,8 +56,9 @@ class TreeNodeModelTests(TestCase):
         self.assertEqual(ancestors, expected_anc)
 
         descendants = set(
-            self.root.get_descendants_queryset(include_self=True)
-            .values_list("pk", flat=True)
+            self.root.get_descendants_pks(include_self=True)
+            # self.root.get_descendants_queryset(include_self=True)
+            # .values_list("pk", flat=True)
         )
         print('>>>> ancestors=', descendants)
         expected_desc = {
