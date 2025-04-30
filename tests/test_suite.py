@@ -49,7 +49,7 @@ class TreeNodeModelTests(TestCase):
     # --- 3. Ancestors and Descendants ------------------------------------------------
 
     def test_ancestors_and_descendants(self):
-        TestModel.tasks.add("update", self.parent_id)
+        TestModel.tasks.add("update", None)
         TestModel.tasks.run()
 
         ancestors = set(
