@@ -72,11 +72,11 @@ To get started quickly, you need to follow these steps:
   ```sh
   pip install django-fast-Treenode
   ```
-- Once installed, add `'Treenode'` to your `INSTALLED_APPS` in **settings.py**:
+- Once installed, add `'treenode'` to your `INSTALLED_APPS` in **settings.py**:
   ```python {title="settings.py"}
   INSTALLED_APPS = [
       ...
-      'Treenode',
+      'treenode',
       ...
   ]
   ```
