@@ -4,7 +4,7 @@
 [![Tests](https://github.com/TimurKady/django-fast-treenode/actions/workflows/test.yaml/badge.svg?branch=main)](https://github.com/TimurKady/django-fast-treenode/actions/workflows/test.yaml)
 [![Docs](https://readthedocs.org/projects/django-fast-treenode/badge/?version=latest)](https://django-fast-treenode.readthedocs.io/)
 [![PyPI](https://img.shields.io/pypi/v/django-fast-treenode.svg)](https://pypi.org/project/django-fast-Treenode/)
-[![Published on Django Packages](https://djangopackages.org/packages/p/django-fast-treenode/)
+[![Published on Django Packages](https://img.shields.io/badge/Published%20on-Django%20Packages-0c3c26)](https://djangopackages.org/packages/p/django-fast-treenode/)
 [![Sponsor](https://img.shields.io/github/sponsors/TimurKady)](https://github.com/sponsors/TimurKady)
 
 ## About The Treenode Framework
