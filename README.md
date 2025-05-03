@@ -112,7 +112,6 @@ To get started quickly, you need to follow these steps:
   ```sh
   python manage.py runserver
   ```
-
 Everything is ready, enjoy 🎉!
 
 ## Documentation
