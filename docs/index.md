@@ -73,10 +73,10 @@ To get started quickly, you need to follow these steps:
   ```
   from django.contrib import admin
   from treenode.admin import TreeNodeModelAdmin
-  from .models import TestNode
+  from .models import MyTree
 
-  @admin.register(TestNode)
-  class EntityAdmin(TreeNodeModelAdmin):
+  @admin.register(MyTree)
+  class MyTreeAdmin(TreeNodeModelAdmin):
     list_display = ("name",)
     search_fields = ("name",)
   ```
