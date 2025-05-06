@@ -47,6 +47,7 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
     }
 
     change_list_template = "admin/treenode_changelist.html"
+    import_export = True
 
     class Media:
         """Meta Class."""
