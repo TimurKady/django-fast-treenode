@@ -84,7 +84,7 @@ class AdminMixin(admin.ModelAdmin):
                     value = field(obj)
                     field_name = getattr(field, "__name__", "field")
                 else:
-                    attr, value = lookup_field(field, obj, self)
+                    r, attr, value = lookup_field(field, obj, self)
                     field_name = field
 
                 row_data.append(value)
