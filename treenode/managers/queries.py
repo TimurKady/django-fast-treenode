@@ -5,7 +5,7 @@ Low-level SQL Query Manager.
 Encapsulates all logic to retrieve related primary keys based on relationships
 (e.g., ancestors, children, descendants, siblings, family, root) using raw SQL.
 
-Version: 3.0.0
+Version: 3.0.4
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
