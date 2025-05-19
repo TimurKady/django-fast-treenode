@@ -66,5 +66,29 @@ class SQLQueue:
                     raise
         self._items.clear()
 
+    @staticmethod
+    def wrap_union_all(queries):
+        """
+        Combine multiple SQL queries using UNION ALL with vendor-specific handling.
+        Each query is a tuple: (sql, params).
+        Returns a tuple: (combined_sql, combined_params).
+        """
+        if is_sqlite():
+            # SQLite требует одинаковое число и порядок столбцов. Добавим к каждому SELECT псевдонимы.
+            def alias_select(sql, alias_prefix, idx):
+                return f"SELECT * FROM ({sql}) AS {alias_prefix}_{idx}"
+
+            wrapped_queries = [
+                alias_select(q[0], "q", i) for i, q in enumerate(queries)
+            ]
+            combined_sql = " UNION ALL ".join(wrapped_queries)
+        else:
+            combined_sql = " UNION ALL ".join(f"({q[0]})" for q in queries)
+
+        combined_params = []
+        for q in queries:
+            combined_params.extend(q[1])
+
+        return combined_sql, combined_params
 
 # The End

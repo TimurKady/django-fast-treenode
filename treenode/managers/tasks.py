@@ -28,6 +28,19 @@ class TreeTaskQueue:
         """Init the task query."""
         self.model = model
         self.queue = []
+        self._running = False
+
+        # Register the execution queue when the interpreter exits
+        atexit.register(self._atexit_run)
+
+    def _atexit_run(self):
+        """Run queue on interpreter exit if pending tasks exist."""
+        if self.queue and not self._running:
+            try:
+                self.run()
+            except Exception as e:
+                # Don't crash on completion, just log
+                print(f"[TreeTaskQueue] Error during atexit: {e}")
 
     def add(self, mode, parent_id):
         """Add task to the query."""
@@ -37,18 +50,57 @@ class TreeTaskQueue:
         """Run task queue."""
         if len(self.queue) == 0:
             return
+
+        self._running = True
         try:
             optimized = self._optimize()
-            for task in optimized:
-                if task["mode"] == "update":
-                    parent_id = task["parent_id"]
-                    TreePathCompiler.update_path(
-                        model=self.model,
-                        parent_id=parent_id
-                    )
+            if not optimized:
+                return
+
+            # Select the parent ID we will work with
+            parent_ids = [t["parent_id"] for t in optimized]
+            parent_ids = [pid for pid in parent_ids if pid is not None]
+
+            with connection.cursor() as cursor:
+                cursor.execute("BEGIN;")
+
+                if None in [t["parent_id"] for t in optimized]:
+                    # Global blocking on all roots
+                    try:
+                        cursor.execute(
+                            f"SELECT id FROM {self.model._meta.db_table} WHERE parent_id IS NULL FOR UPDATE NOWAIT"
+                        )
+                    except Exception as e:
+                        print(f"[TreeTaskQueue] Skipped (root locked): {e}")
+                        return
+                else:
+                    # Blocking per parent
+                    try:
+                        for parent_id in parent_ids:
+                            cursor.execute(
+                                f"SELECT id FROM {self.model._meta.db_table} WHERE id = %s FOR UPDATE NOWAIT",
+                                [parent_id],
+                            )
+                    except Exception as e:
+                        print(f"[TreeTaskQueue] Skipped (parent locked): {e}")
+                        return
+
+                # If you got here, the locks were received, we are updating
+                for task in optimized:
+                    if task["mode"] == "update":
+                        TreePathCompiler.update_path(
+                            model=self.model,
+                            parent_id=task["parent_id"]
+                        )
+
+                cursor.execute("COMMIT;")
+        except Exception as e:
+            print(f"[TreeTaskQueue] Error in run: {e}")
+            connection.rollback()
         finally:
             self.queue.clear()
             self._running = False
+
 
     # @profile
     def _optimize(self):
