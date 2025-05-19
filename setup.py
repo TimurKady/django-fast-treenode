@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='django-fast-treenode',
-    version='3.0.3',
+    version='3.0.4',
     description='Treenode Framework for supporting tree (hierarchical) data structure in Django projects',
     long_description=open('README.md', encoding='utf-8').read(),
     long_description_content_type='text/markdown',
@@ -14,7 +14,7 @@ setup(
     license='MIT',
     license_files=['LICENSE'],
     install_requires=[
-        'Django>=4.0',
+        'Django>=5.0',
         'msgpack>=1.0.0',
         'openpyxl>=3.0.0',
         'pyyaml>=5.1',
