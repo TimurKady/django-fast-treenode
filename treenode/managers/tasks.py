@@ -7,6 +7,7 @@ Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
+import atexit
 from django.db import connection
 
 from ..utils.db import TreePathCompiler
