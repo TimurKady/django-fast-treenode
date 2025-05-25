@@ -15,7 +15,7 @@ register = template.Library()
 
 
 @register.inclusion_tag(
-    "admin/treenode_rows.html",
+    "treenode/admin/treenode_rows.html",
     takes_context=True,
 )
 def tree_result_list(context, cl):

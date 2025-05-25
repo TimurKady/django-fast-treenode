@@ -46,7 +46,7 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
         models.ForeignKey: {'widget': TreeWidget()},
     }
 
-    change_list_template = "admin/treenode_changelist.html"
+    change_list_template = "treenode/admin/treenode_changelist.html"
     import_export = True
 
     class Media:
@@ -184,6 +184,7 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
     def changelist_view(self, request, extra_context=None):
         """Changelist View."""
         extra_context = extra_context or {}
+        # TODO
         extra_context['import_export_enabled'] = self.import_export
         extra_context['num_sorted_fields'] = len(self.get_ordering(request) or [])  # noqa: D501
 

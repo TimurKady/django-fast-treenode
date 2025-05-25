@@ -84,7 +84,7 @@ class AdminMixin(admin.ModelAdmin):
                     value = field(obj)
                     field_name = getattr(field, "__name__", "field")
                 else:
-                    r, attr, value = lookup_field(field, obj, self)
+                    attr, value = lookup_field(field, obj, self)
                     field_name = field
 
                 row_data.append(value)
@@ -154,7 +154,7 @@ class AdminMixin(admin.ModelAdmin):
 
         # Render HTML
         html = render_to_string(
-            "admin/treenode_ajax_rows.html",
+            "treenode/admin/treenode_ajax_rows.html",
             {"rows": rows},
             request=request
         )
