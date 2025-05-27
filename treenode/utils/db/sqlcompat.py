@@ -125,44 +125,12 @@ class SQLCompat:
                     {set_clause};
             """
 
-        elif connection.vendor == "sqlite":
-            # SQLite workaround via temporary table
-            temp_table = "temp_tree_update"
-            cols = ["id"] + [cte_alias.get(f, f) for f in update_fields]
-            col_defs = ", ".join(f"{c} TEXT" for c in cols)
-            insert_cols = ", ".join(cols)
-            select_cols = ", ".join(cols)
-
-            set_clause = ", ".join(
-                f"{qf(f)} = (SELECT t.{cte_alias.get(f, f)} FROM {temp_table} t WHERE t.id = {qt}.id)"  # noqa
-                for f in update_fields
-            )
-
-            return f"""
-                DROP TABLE IF EXISTS {temp_table};
-                CREATE TEMP TABLE {temp_table} ({col_defs});
-
-                WITH RECURSIVE tree_cte {cte_header} AS (
-                    {base_sql}
-                    UNION ALL
-                    {recursive_sql}
-                )
-                INSERT INTO {temp_table} ({insert_cols})
-                SELECT {select_cols} FROM tree_cte;
-
-                UPDATE {qt}
-                SET {set_clause}
-                WHERE id IN (SELECT id FROM {temp_table});
-            """
-
         else:
-            # Fallback: subqueries
-            # (still buggy in SQLite, hence above workaround)
             set_clause = ", ".join(
                 f"{qf(f)} = (SELECT t.{f} FROM tree_cte t WHERE t.id = {qt}.id)"
                 for f in update_fields
             )
-            where_clause = "id IN (SELECT id FROM tree_cte)"
+            where_clause = f"id IN (SELECT id FROM tree_cte)"
             return f"""
                 WITH RECURSIVE tree_cte {cte_header} AS (
                     {base_sql}

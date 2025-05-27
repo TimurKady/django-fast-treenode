@@ -5,14 +5,13 @@ Low-level SQL Query Manager.
 Encapsulates all logic to retrieve related primary keys based on relationships
 (e.g., ancestors, children, descendants, siblings, family, root) using raw SQL.
 
-Version: 3.0.4
+Version: 3.0.7
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
 
 from django.db import connection
-from ..utils.db.sqlcompat import SQLCompat 
 
 
 class TreeQuery:
@@ -32,6 +31,19 @@ class TreeQuery:
         with connection.cursor() as cursor:
             cursor.execute(sql, params)
             return cursor.fetchall()
+
+    def wrap_union_all(self, queries):
+        """
+        Combine multiple SQL queries using UNION ALL.
+
+        Each query is a tuple: (sql, params).
+        Returns a tuple: (combined_sql, combined_params).
+        """
+        union_query = " UNION ALL ".join(f"({q[0]})" for q in queries)
+        combined_params = []
+        for q in queries:
+            combined_params.extend(q[1])
+        return union_query, combined_params
 
     def order_by(self, sql, order_by_clause):
         """Wrap the SQL in an outer query to enforce ordering."""
@@ -64,7 +76,7 @@ class TreeQuery:
         if include_self:
             sql2 = f"SELECT id, priority FROM {self.db_table} WHERE id = %s"
             params2 = [self.node.pk]
-            combined_sql, combined_params = SQLCompat.wrap_union_all(
+            combined_sql, combined_params = self.wrap_union_all(
                 [(sql1, params1), (sql2, params2)])
             sql = self.order_by(combined_sql, "priority")
             return sql, combined_params
@@ -103,7 +115,7 @@ class TreeQuery:
                 FROM {self.db_table}
                 WHERE id = %s
             """
-            union_sql, union_params = SQLCompat.wrap_union_all([
+            union_sql, union_params = self.wrap_union_all([
                 (base_sql, params),
                 (sql_self, [self.node.pk])
             ])
@@ -136,7 +148,7 @@ class TreeQuery:
 
         if include_self:
             sql_self = f"SELECT id, _depth, priority FROM {self.db_table} WHERE id = %s"  # noqa: D501
-            union_sql, union_params = SQLCompat.wrap_union_all(
+            union_sql, union_params = self.wrap_union_all(
                 [(base_sql, params), (sql_self, [self.node.pk])])
         else:
             union_sql, union_params = base_sql, params
@@ -186,7 +198,7 @@ class TreeQuery:
         if include_self:
             sql_self = f"SELECT id, _depth, priority FROM {self.db_table} WHERE id = %s"  # noqa: D501
             queries.append((sql_self, [self.node.pk]))
-        combined_sql, combined_params = SQLCompat.wrap_union_all(queries)
+        combined_sql, combined_params = self.wrap_union_all(queries)
         combined_sql = self.order_by(combined_sql, "_depth, priority")
         return combined_sql, combined_params
 

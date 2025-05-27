@@ -21,8 +21,6 @@ from django.utils.translation import gettext_lazy as _
 class TreeWidget(forms.Widget):
     """Custom widget for hierarchical tree selection."""
 
-    template_name = "django/forms/widgets/select.html"
-
     class Media:
         """Meta class to define required CSS and JS files."""
 

@@ -14,7 +14,7 @@ Features:
 - Provides a caching mechanism to optimize performance.
 - Includes methods for tree traversal, manipulation, and serialization.
 
-Version: 3.0.0
+Version: 3.0.7
 Author: Timur Kady
 Email: timurkady@yandex.com
 
@@ -122,7 +122,7 @@ class TreeNodeModel(
 
     def __str__(self):
         """Return a human-readable string representation of an object."""
-        field = getattr(type(self), 'display_field', None)
+        field = getattr(self, 'display_field', None)
         if field and hasattr(self, field):
             return str(getattr(self, field))
         return f'Node {self.pk}'

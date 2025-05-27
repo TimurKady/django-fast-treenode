@@ -2,7 +2,7 @@
 """
 TreeNode Admin Model Class
 
-Version: 3.0.0
+Version: 3.0.7
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
@@ -12,6 +12,7 @@ from django.contrib import admin
 from django.db import models
 from django.http import HttpResponseRedirect
 from django.urls import reverse
+from django.utils.html import escape
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 
@@ -102,10 +103,27 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
                 f'<span style="padding-left: {level * 1.5}em;">'
                 f'{icon}<a href="{edit_url}">{str(obj)}</a></span>'
             )
-        elif self.treenode_display_mode == self.TREENODE_DISPLAY_MODE_BREADCRUMBS:  # noqa
-            breadcrumbs = obj.get_breadcrumbs(
-                attr=getattr(obj, 'treenode_display_field', 'id'))
-            content = " / ".join(map(str, breadcrumbs))
+        elif self.treenode_display_mode == self.TREENODE_DISPLAY_MODE_BREADCRUMBS:
+            breadcrumbs = obj.get_ancestors(include_self=True)
+            model_label = obj._meta.app_label
+            model_name = obj._meta.model_name
+            href = f"admin:{model_label}_{model_name}_change"
+
+            display_attr = getattr(obj, 'display_field', 'id')
+
+            records = [
+                (
+                    getattr(item, display_attr, item.pk),
+                    reverse(href, args=[item.pk]),
+                )
+                for item in breadcrumbs
+            ]
+
+            content = " / ".join([
+                f'<a href="{url}">{escape(label)}</a>'
+                for label, url in records
+            ])
+
         elif self.treenode_display_mode == self.TREENODE_DISPLAY_MODE_INDENTATION:  # noqa
             indent = "&mdash;" * level
             content = f'{indent}<a href="{edit_url}">{str(obj)}</a>'

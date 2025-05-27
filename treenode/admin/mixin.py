@@ -4,7 +4,7 @@ TreeNode Admin Model Class Mixin
 
 Views for AdminModel
 
-Version: 3.0.0
+Version: 3.0.7
 Author: Timur Kady
 Email: timurkady@yandex.com
 """

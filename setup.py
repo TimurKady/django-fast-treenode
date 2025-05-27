@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='django-fast-treenode',
-    version='3.0.6',
+    version='3.0.7',
     description='Treenode Framework for supporting tree (hierarchical) data structure in Django projects',
     long_description=open('README.md', encoding='utf-8').read(),
     long_description_content_type='text/markdown',
