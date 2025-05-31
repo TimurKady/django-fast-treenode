@@ -2,7 +2,7 @@
 """
 TreeNode TaskQuery manager
 
-Version: 3.0.4
+Version: 3.0.1
 Author: Timur Kady
 Email: timurkady@yandex.com
 """

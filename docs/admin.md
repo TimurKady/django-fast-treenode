@@ -16,7 +16,6 @@ class CategoryAdmin(TreeNodeModelAdmin):
     # Set the display mode: 'accordion', 'breadcrumbs', or 'indentation'
     treenode_display_mode = TreeNodeModelAdmin.TREENODE_DISPLAY_MODE_ACCORDION
     # treenode_display_mode = TreeNodeModelAdmin.TREENODE_DISPLAY_MODE_BREADCRUMBS
-    # treenode_display_mode = TreeNodeModelAdmin.TREENODE_DISPLAY_MODE_INDENTATION
 
     list_display = ("name",)
     search_fields = ("name",)
@@ -30,8 +29,6 @@ You can choose from three display modes:
   Expands/collapses nodes dynamically.
 - **`TREENODE_DISPLAY_MODE_BREADCRUMBS`**  
   Displays the tree as a sequence of **breadcrumbs**, making it easy to navigate.
-- **`TREENODE_DISPLAY_MODE_INDENTATION`**  
-  Uses a **long dash** (`———`) to indicate nesting levels, providing a simple visual structure.
 
 The accordion mode is **always active**, and the setting only affects how nodes are displayed.
 

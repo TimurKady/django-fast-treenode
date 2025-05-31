@@ -66,6 +66,27 @@ Email: timurkady@yandex.com
     opacity: 1.0;
 }
 
+.treenode-toolbar{
+  display: flex;
+}
+
+.treenode-toolbar {
+  margin: 15px 0px;
+}
+
+.treenode-button {
+  padding: 5px !important;
+  margin-left: 15px !important;
+}
+
+tr.treenode-hidden {
+  display: none;
+}
+
+td.action-checkbox{
+  text-align: center;
+}
+
 .dark-theme .treenode-toggle {
     color: #ccc;
     background-color: #444;

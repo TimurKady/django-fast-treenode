@@ -1,40 +1,23 @@
 /**
  * treenode_admin.js
  *
- * Advanced TreeNode Admin extension for Django Admin.
- * Adds dynamic drag-and-drop sorting, AJAX-based subtree loading,
- * real-time visual feedback, and persistent tree state.
+ * Cleaned version 3.1.0 — TreeNode Admin extension for Django Admin.
+ * - No AJAX loading of children
+ * - No persistence in localStorage
+ * - Local-only expand/collapse logic
+ * - Compatible with pre-rendered full tree
  *
- * Features:
- * - Drag-and-drop node movement with Shift for child placement
- * - Visual animations for feedback (insert flash, drag highlight)
- * - Inline AJAX expansion and collapse of subtrees
- * - Server-side re-rendering and recovery after node movement
- * - Lightweight localStorage persistence using compressed HTML
- *
- * Version: 3.0.0
+ * Version: 3.1.0
  * Author: Timur Kady
  * Email: timurkady@yandex.com
  */
 
-
 (function($) {
 
   // ------------------------------- //
-  // Service and auxiliary functions //
+  // Helpers                        //
   // ------------------------------- //
 
-  function debounce(func, wait) {
-    var timeout;
-    return function() {
-      var context = this, args = arguments;
-      clearTimeout(timeout);
-      timeout = setTimeout(function() {
-        func.apply(context, args);
-      }, wait);
-    };
-  }
-  
   function getCookie(name) {
     let cookieValue = null;
     if (document.cookie && document.cookie !== '') {
@@ -49,120 +32,9 @@
     }
     return cookieValue;
   }
-  
-  function showAdminMessage(text, level = "info", duration = 6000) {
-    const $ = django.jQuery || window.jQuery;
-
-    // Make sure the block exists
-    let msgList = $(".messagelist");
-    if (!msgList.length) {
-      msgList = $('<ul class="messagelist"></ul>');
-      $("#content").before(msgList);
-    }
-
-    // Create a message
-    const msg = $(`<li class="${level}">${text}</li>`);
-
-    msgList.append(msg);
-
-    // Auto disappear after 6 seconds (default)
-    setTimeout(() => {
-      msg.fadeOut(500, () => msg.remove());
-    }, duration);
-  }
-
-  function hangleAjaxSuccess(data) {
-    const msg = data.message || "The request was successfully completed.";
-    showAdminMessage(msg, "success");
-    ChangeList.saveTree()
-    ChangeList.restoreTree(ChangeList.expandedNodes);
-  }
-  
-  function handleAjaxError(xhr, status, error) {
-    ChangeList.restoreTree(ChangeList.expandedNodes);
-
-    const fallbackMessage = "An unknown error occurred while executing the request.";
-    const $ = django.jQuery || window.jQuery;
-    let message = "";
-
-    // Try to extract the JSON error
-    try {
-      const contentType = xhr.getResponseHeader("Content-Type") || "";
-      if (contentType.includes("application/json")) {
-        const data = xhr.responseJSON || JSON.parse(xhr.responseText);
-        if (data?.error) {
-          message = data.error;
-        } else if (typeof data?.detail === "string") {
-          message = data.detail;
-        } else if (typeof data === "string") {
-          message = data;
-        }
-      }
-    } catch (e) {
-      // Not JSON – silently continue
-    }
-
-    // Try to parse plain HTML Django error and extract exception summary
-    if (!message && xhr.responseText) {
-      try {
-        // Try to extract main exception message from Django debug HTML
-        const match = xhr.responseText.match(/<pre class="exception_value">([^<]+)<\/pre>/);
-        if (match && match[1]) {
-          message = match[1].trim();
-        } else {
-          // As fallback, extract first lines of cleaned HTML
-          const plain = xhr.responseText.replace(/<\/?[^>]+(>|$)/g, "").trim();
-          const lines = plain.split("\n").map(line => line.trim()).filter(Boolean);
-          if (lines.length) {
-            message = lines.slice(0, 3).join(" — ");  // keep it brief
-          }
-        }
-      } catch (e) {
-        // Parsing failed, do nothing
-      }
-    }
-  
-    // If there is still nothing, build a generic fallback
-    if (!message) {
-      if (xhr.status) {
-        message = `${xhr.status}: ${error || status}`;
-      } else {
-        message = fallbackMessage;
-      }
-    }
-  
-    showAdminMessage(message, "error");
-  }
-
-  function isDarkTheme() {
-    return document.documentElement.getAttribute("data-theme") === "dark";
-  }
-
-  function applyTheme() {
-    var dark = isDarkTheme();
-    var $container = $(".tree-widget");
-    var $dropdown = $(".tree-widget-dropdown");
-
-    if (dark) {
-      $dropdown.addClass("dark-theme");
-      $container.addClass("dark-theme");
-    } else {
-      $dropdown.removeClass("dark-theme");
-      $container.removeClass("dark-theme");
-    }
-  }
-  
-  let ajaxCounter = 0;
-  
-  function clearCursor() {
-    ajaxCounter--;
-    if (ajaxCounter === 0) {
-      $('body').css('cursor', 'default');
-    }
-  }
 
   // ------------------------------- //
-  //            AJAX Setup           //
+  // AJAX Setup                     //
   // ------------------------------- //
 
   const csrftoken = getCookie('csrftoken');
@@ -172,18 +44,19 @@
       if (!/^https?:.*/.test(settings.url)) {
         xhr.setRequestHeader("X-CSRFToken", csrftoken);
       }
-      ajaxCounter++;
       $('body').css('cursor', 'wait');
+    },
+    complete: function() {
+      $('body').css('cursor', 'default');
     },
     cache: false
   });
 
   // ------------------------------- //
-  //  Animations and visual feedback //
+  // Visual feedback                 //
   // ------------------------------- //
 
   const TreeFx = {
-    // Highlight the line where the element was moved
     flashInsert(nodeId) {
       const $row = $(`tr[data-node-id="${nodeId}"]`);
       if (!$row.length) return;
@@ -192,235 +65,167 @@
       setTimeout(() => $row.removeClass("flash-insert"), 1000);
     },
 
-    // Fading in a new tbody (e.g. after reloadTree)
-    fadeInTbody(newHTML, callback) {
-      const $tbody = $('table#result_list tbody');
-      $tbody.stop(true, true).fadeOut(100, () => {
-        $tbody.html(newHTML).fadeIn(150, callback);
-      });
-    },
-
-    // Visual cue when drag starts and ends
     markDragging($item, enable) {
       $item.toggleClass('dragging', enable);
-    },
+    }
   };
 
-
   // ------------------------------- //
-  //            Main Class           //
+  // Tree logic                      //
   // ------------------------------- //
-
 
   var ChangeList = {
     $tableBody: null,
     isShiftPressed: false,
     activeTargetRow: null,
     isMoving: false,
-    expandedNodes: [],
-    label: '',
 
     init: function() {
       this.$tableBody = $('table#result_list tbody');
       this.bindEvents();
-      this.restoreTree();
       this.enableDragAndDrop();
     },
-
+    
+    // Save expanded nodes to localStorage
     saveTree: function() {
       if (!this.$tableBody) return;
-      
-      this.expandedNodes = [];
-      this.$tableBody.find(".treenode-toggle").each(function () {
-        $btn = $(this)
-        if ($btn.data('expanded')) {
-          ChangeList.expandedNodes.push($btn.data('node-id'));
-        }
-      });
-      if (!(this.expandedNodes ) || (this.expandedNodes.length === 0)) {
-        localStorage.removeItem("saved_tbody");
+    
+      // Сохраняем ТОЛЬКО те node_id, которые раскрыты
+      this.expandedNodes = this.$tableBody.find(".treenode-toggle").map(function() {
+        const $btn = $(this);
+        return $btn.data("expanded") ? $btn.data("node-id") : null;
+      }).get().filter(Boolean);
+    
+      if (this.expandedNodes.length === 0) {
+        localStorage.removeItem("treenode_expanded");
       } else {
-        localStorage.setItem("saved_tbody", JSON.stringify(this.expandedNodes));
+        localStorage.setItem("treenode_expanded", JSON.stringify(this.expandedNodes));
       }
+    
       const count = $("#result_list tbody tr").length;
       if (count > 0) {
         $("p.paginator").first().text(`${count} ${ChangeList.label}`);
         localStorage.setItem("label", ChangeList.label);
       }
-      
     },
 
-    restoreTree: function(expandedList = null) {
-      const expanded = expandedList || JSON.parse(localStorage.getItem("saved_tbody") || "[]");
-      ChangeList.label = localStorage.getItem("label") || "";
-      if (!expanded.length) return;
     
-      const params = { expanded: JSON.stringify(expanded) };
-      
-      $.ajax({
-        url: 'change_list/',
-        method: 'GET',
-        data: params,
-        dataType: 'json',
-        success: function(data) {
-          ChangeList.$tableBody.html(data.html);
-          ChangeList.expandedNodes = expanded;
-
-          ChangeList.$tableBody.find(".treenode-toggle").each(function () {
-            const $btn = $(this);
-            const nodeId = $btn.data('node-id');
-            if (ChangeList.expandedNodes.includes(nodeId)) {
-              $btn.data("expanded", true);
-              $btn.text("▼");
-            }
-          });
-          
-          if (data.label) ChangeList.label = data.label;
-          const count = $("#result_list tbody tr").length;
-          $("p.paginator").first().text(`${count} ${ChangeList.label}`);
-        },
-        error: function(xhr, status, error) {
-          handleAjaxError(xhr, status, error);
-          // console.error("Restore error:", status, error);
-        },
-        complete: function() {
-          clearCursor();
-        }
-      });
-    },
-    
-    searchRows: function(searchQuery) {
-      var params = { q: searchQuery };
-
-      $.ajax({
-        url: 'change_list/',
-        method: 'GET',
-        data: params,
-        dataType: 'json',
-        success: function(data) {
-          ChangeList.$tableBody.html(data.html);
-        },
-        error: function(xhr, status, error) {
-          handleAjaxError(xhr, status, error);
-          // console.error("Search error:", status, error);
-        },
-        complete: function() {
-          clearCursor();
-        }
-      });
+    // Restore expanded nodes from localStorage
+    restoreTreeState: function() {
+      const expanded = JSON.parse(localStorage.getItem("treenode_expanded") || "[]");
+      for (const nodeId of expanded) {
+        ChangeList.expandNode(nodeId);
+      }
     },
 
-    insertRows: function($parentRow, parentId) {
-      var parent_id = parentId
-      var params = {parent_id: parent_id};
-
-      $.ajax({
-        url: 'change_list/',
-        method: 'GET',
-        data: params,
-        dataType: 'json',
-        success: function(data) {
-          $parentRow.after(data.html);
-          if (data.label) ChangeList.label = data.label;
-        },
-        error: function(xhr, status, error) {
-          handleAjaxError(xhr, status, error);
-          // console.error("Insert rows error:", status, error);
-        },
-        complete: function() {
-          ChangeList.saveTree();
-          clearCursor();
-        }
-      });
+    expandNode: function(nodeId) {
+      const $row = this.$tableBody.find(`tr[data-node-id="${nodeId}"]`);
+      const $btn = $row.find(".treenode-toggle");
+      $btn.text("▼").data("expanded", true);
+      this.showChildren(nodeId);
+      this.saveTree();
     },
 
-    removeRows: function(parentId) {
-      var $children = this.$tableBody.find(`tr[data-parent-of="${parentId}"]`);
-      $children.each(function () {
-        var childId = $(this).data('node-id');
-        ChangeList.removeRows(childId);
-      });
-      $children.remove();
+    collapseNode: function(nodeId) {
+      const $row = this.$tableBody.find(`tr[data-node-id="${nodeId}"]`);
+      const $btn = $row.find(".treenode-toggle");
+      $btn.text("►").data("expanded", false);  // <-- ВАЖНО!
+      this.hideChildrenRecursive(nodeId);
       this.saveTree();
     },
 
     toggleNode: function($btn) {
-      var expanded = $btn.data('expanded');
-      var $parentRow = $btn.closest('tr');
-      var parentId = $btn.data('node-id');
-
-      if (expanded) {
-        $btn.html('►').data('expanded', false);
-        this.removeRows(parentId);
+      const nodeId = $btn.data("node-id");
+      const isExpanded = $btn.data("expanded");
+      if (isExpanded) {
+        this.collapseNode(nodeId);
       } else {
-        $btn.html('▼').data('expanded', true);
-        this.insertRows($parentRow, parentId);
+        this.expandNode(nodeId);
       }
     },
 
+    showChildren: function(parentId) {
+      const $children = this.$tableBody.find(`tr[data-parent-id="${parentId}"]`);
+      $children.removeClass("treenode-hidden");
+
+      $children.each((_, child) => {
+        const $child = $(child);
+        const childId = $child.data("node-id");
+        const $toggle = $child.find(".treenode-toggle");
+        if ($toggle.data("expanded")) {
+          this.showChildren(childId);
+        }
+      });
+    },
+
+    hideChildrenRecursive: function(parentId) {
+      const $children = this.$tableBody.find(`tr[data-parent-id="${parentId}"]`);
+      $children.addClass("treenode-hidden");
+
+      $children.each((_, child) => {
+        const childId = $(child).data("node-id");
+        this.hideChildrenRecursive(childId);
+      });
+    },
+
+    expandAll: function() {
+      const self = this;
+      this.$tableBody.find("button.treenode-toggle").each(function() {
+        self.expandNode($(this).data("node-id"));
+      });
+    },
+
+    collapseAll: function() {
+      const self = this;
+      this.$tableBody.find("button.treenode-toggle").each(function() {
+        self.collapseNode($(this).data("node-id"));
+      });
+    },
+
     bindEvents: function() {
-      var self = this;
+      const self = this;
 
-      // Search listener
-      $('input[name="q"]')
-        .on("focus", function() {
-          self.saveTree();
-        })
-        .on("keyup", debounce(function() {
-          var query = $.trim($(this).val());
-          if (query === '') {
-            self.restoreTree(ChangeList.expandedNodes);
-          } else {
-            self.searchRows(query);
-          }
-        }, 300));
-
-      // Toggle buttons listener
       $(document).on("click", "button.treenode-toggle", function(e) {
         e.preventDefault();
-        var $btn = $(this);
-        self.toggleNode($btn);
+        self.toggleNode($(this));
       });
-      
-      // Shift key hold listener
+
+      $(document).on("click", ".treenode-expand-all", function() {
+        self.expandAll();
+      });
+
+      $(document).on("click", ".treenode-collapse-all", function() {
+        self.collapseAll();
+      });
+
       $(document).on("keydown", function(e) {
         if (e.key === "Shift") {
-          ChangeList.isShiftPressed = true;
-          ChangeList.updateDndHighlight();
+          self.isShiftPressed = true;
+          self.updateDndHighlight();
         }
-      })
-      .on("keyup", function(e) {
+      }).on("keyup", function(e) {
         if (e.key === "Shift") {
-          ChangeList.isShiftPressed = false;
-          ChangeList.updateDndHighlight();
+          self.isShiftPressed = false;
+          self.updateDndHighlight();
         }
       });
-      
-      // Listener for admin panel theme change button
-      $(document).on("click", "button.theme-toggle", function() {
-        applyTheme();
-      });
-      
-      // Fix action selets  
+
       $('#result_list').on('change', '#action-toggle', function() {
         $('input.action-select').prop('checked', this.checked);
       });
     },
-    
+
     enableDragAndDrop: function() {
       const self = this;
-    
+
       this.$tableBody.sortable({
         items: "tr",
         handle: ".treenode-drag-handle",
         placeholder: "treenode-placeholder",
-        activeTargetRow: null,
         helper: function(e, tr) {
           const $originals = tr.children();
           const $helper = tr.clone();
-          $helper.find('[id]').each(function() {
-            $(this).removeAttr('id');
-          });
+          $helper.find('[id]').removeAttr('id');
           $helper.children().each(function(index) {
             $(this).width($originals.eq(index).width());
           });
@@ -428,45 +233,38 @@
         },
         start: function(e, ui) {
           TreeFx.markDragging(ui.item, true);
-          // ChangeList.updateDndHighlight();
-          // console.log("Drag started:", ui.item.data("node-id"));
         },
         over: function(e, ui) {
-          ChangeList.updateDndHighlight();
-          // console.log("over")
+          self.updateDndHighlight();
         },
         stop: function(e, ui) {
           TreeFx.markDragging(ui.item, false);
-
           const $item = ui.item;
           const nodeId = $item.data("node-id");
           const prevId = $item.prev().data("node-id") || null;
-          const nextId = $item.next().data("node-id") || null;
-          const isChild = ChangeList.isShiftPressed;
+          const mode = self.isShiftPressed ? 'child' : 'after';
 
-          if (ChangeList.activeTargetRow) {
-            ChangeList.activeTargetRow.removeClass("target-as-child");
-            ChangeList.activeTargetRow = null;
+          if (self.activeTargetRow) {
+            self.activeTargetRow.removeClass("target-as-child");
+            self.activeTargetRow = null;
           }
 
-          mode = isChild ? 'child' : 'after';
-          ChangeList.applyMove(nodeId, prevId, mode)
-
+          self.applyMove(nodeId, prevId, mode);
           TreeFx.flashInsert(nodeId);
         },
       });
     },
-    
+
     updateDndHighlight: function() {
       const $placeholder = this.$tableBody.find("tr.treenode-placeholder");
       const $target = $placeholder.prev();
-    
-      if (!($target && $target.length && $target.data("node-id"))) {
+
+      if (!$target.length || !$target.data("node-id")) {
         this.$tableBody.find("tr.target-as-child").removeClass("target-as-child");
         this.activeTargetRow = null;
         return;
       }
-    
+
       if (this.isShiftPressed) {
         if (!this.activeTargetRow || !this.activeTargetRow.is($target)) {
           this.$tableBody.find("tr.target-as-child").removeClass("target-as-child");
@@ -480,52 +278,45 @@
         }
       }
     },
-    
+
     applyMove: function(nodeId, targetId, mode) {
       if (this.isMoving) return;
-    
+
       this.isMoving = true;
       this.activeTargetRow = null;
-    
+
       const params = {
         node_id: nodeId,
         target_id: targetId,
-        mode: mode,
-        expanded: JSON.stringify(this.expandedNodes)
+        mode: mode
       };
-      
-      // console.log(params);
-    
+
       $.ajax({
         url: 'move/',
         method: 'POST',
         data: params,
         dataType: 'json',
         success: function(data) {
-          hangleAjaxSuccess(data);
+          const msg = data.message || "Node moved successfully.";
+          $("<li class='success'>" + msg + "</li>").appendTo(".messagelist");
         },
         error: function(xhr, status, error) {
-          handleAjaxError(xhr, status, error);
+          const fallback = "Error moving node.";
+          $("<li class='error'>" + (xhr.responseText || fallback) + "</li>").appendTo(".messagelist");
         },
         complete: function() {
           ChangeList.isMoving = false;
-          clearCursor();
+          location.reload();
         }
       });
     }
-  }
-
-  // ------------------------------- //
-  //               Init              //
-  // ------------------------------- //
+  };
 
   $(document).ready(function () {
-    document.body.style.cursor = '';
-    applyTheme();
-      if ($("table#result_list").length) {
-        ChangeList.init();
-      }
+    if ($("table#result_list").length) {
+      ChangeList.init();
+      ChangeList.restoreTreeState();
+    }
   });
 
 })(django.jQuery || window.jQuery);
-
