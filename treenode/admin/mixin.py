@@ -249,7 +249,7 @@ class AdminMixin(admin.ModelAdmin):
             importer.parse()
             result = importer.import_tree()
 
-            return render(request, "admin/treenode_import_export.html", {
+            return render(request, "treenode/admin/treenode_import_export.html", {
                 "created_count": result.get("created", 0),
                 "updated_count": result.get("updated", 0),
                 "errors": result.get("errors", []),
@@ -258,7 +258,7 @@ class AdminMixin(admin.ModelAdmin):
 
         return render(
             request,
-            "admin/treenode_import_export.html",
+            "treenode/admin/treenode_import_export.html",
             {"import_active": True}
         )
 
@@ -284,7 +284,7 @@ class AdminMixin(admin.ModelAdmin):
 
         return render(
             request,
-            "admin/treenode_import_export.html",
+            "treenode/admin/treenode_import_export.html",
             {"import_active": False}
         )
 

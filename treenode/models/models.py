@@ -29,8 +29,11 @@ from django.db import models, connection
 from itertools import islice
 from django.db.models.signals import pre_save, post_save
 from django.utils.translation import gettext_lazy as _
+import logging
 
 from . import mixins as mx
+
+logger = logging.getLogger(__name__)
 from .factory import TreeNodeModelBase
 from ..utils.db import ModelSQLService, SQLQueue
 from ..managers import TreeNodeManager, TreeQueryManager, TreeTaskManager
@@ -193,7 +196,10 @@ class TreeNodeModel(
                 if is_move:
                     self._meta.model.tasks.add("update", state["parent_id"])
             else:
-                print("TreeNodeModel error: oject not found in DB! WTF, MF!")
+                logger.error(
+                    "TreeNodeModel save error: object with pk %s not found in DB",
+                    self.pk,
+                )
         else:
             is_new = True
 

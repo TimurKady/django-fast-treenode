@@ -207,7 +207,7 @@ class TreeNodeManager(models.Manager):
 
         WARNING: Unsafe low-level update bypassing all TreeNode protections.
         Use only when bypassing _path/_depth/priority safety checks is
-        inte
+        intentional.
         """
         return models.QuerySet(self.model, using=self.db)\
             .bulk_update(*args, **kwargs)
