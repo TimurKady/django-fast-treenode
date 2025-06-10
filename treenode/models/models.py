@@ -14,12 +14,12 @@ Features:
 - Provides a caching mechanism to optimize performance.
 - Includes methods for tree traversal, manipulation, and serialization.
 
+With full support for SQL queues, deferred execution,
+custom sorting, and a sleek architecture without unnecessary duplication.
+
 Version: 3.0.7
 Author: Timur Kady
 Email: timurkady@yandex.com
-
-Причём с абсолютной поддержкой SQL-очередей, deferred execution,
-кастомной сортировки и крутой архитектурой без лишнего дублирования.
 """
 
 from __future__ import annotations
@@ -29,11 +29,8 @@ from django.db import models, connection
 from itertools import islice
 from django.db.models.signals import pre_save, post_save
 from django.utils.translation import gettext_lazy as _
-import logging
 
 from . import mixins as mx
-
-logger = logging.getLogger(__name__)
 from .factory import TreeNodeModelBase
 from ..utils.db import ModelSQLService, SQLQueue
 from ..managers import TreeNodeManager, TreeQueryManager, TreeTaskManager
@@ -41,6 +38,8 @@ from ..cache import treenode_cache as cache
 from ..settings import SEGMENT_LENGTH, BASE
 from ..signals import disable_signals
 
+import logging
+logger = logging.getLogger(__name__)
 
 class TreeNodeModel(
         mx.TreeNodeAncestorsMixin, mx.TreeNodeChildrenMixin,
@@ -341,11 +340,11 @@ class TreeNodeModel(
             queue.extend(model.objects.filter(parent=node))
 
         if verbose and errors:
-            print("Tree integrity check failed:")
+            logger.error("Tree integrity check failed:")
             for err in errors:
-                print("  -", err)
+                logger.error("  - %s", err)
         elif verbose:
-            print("Tree integrity: OK ✅")
+            logger.info("Tree integrity: OK ✅")
 
         return errors
 
