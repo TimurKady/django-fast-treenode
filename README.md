@@ -62,6 +62,7 @@ At the moment, django-fast-treeenode is, if not the best, then one of the best p
 - **Convenient administration**: the admin panel interface was developed taking into account the experience of using other packages. It provides convenience and intuitiveness with ease of programming.
 - **Scalability**: **Treenode Framework** suitable for solving simple problems such as menus, directories, parsing arithmetic expressions, as well as complex problems such as program optimization, image layout, multi-step decision making problems, or machine learning..
 - **Lightweight**: All functionality is implemented within the package without heavyweight dependencies such as `djangorestframework` or `django-import-export`.
+- **Optional JWT authentication**: enable token-based protection for the API with a single setting.
 
 All this makes **Treenode Framework** a prime candidate for your needs.
 
