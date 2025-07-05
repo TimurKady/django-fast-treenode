@@ -24,8 +24,8 @@ class TreeWidget(forms.Widget):
     class Media:
         """Meta class to define required CSS and JS files."""
 
-        css = {"all": ("css/tree_widget.css",)}
-        js = ("js/tree_widget.js",)
+        css = {"all": ("treenode/css/tree_widget.css",)}
+        js = ("treenode/js/tree_widget.js",)
 
     def build_attrs(self, base_attrs, extra_attrs=None):
         """Build attributes for the widget."""
