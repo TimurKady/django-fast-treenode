@@ -89,11 +89,7 @@ class TreeNodeModelTests(TestCase):
 
     def test_delete_subtree(self):
         self.a.delete(cascade=False)
-
-        tree_data = TestModel.get_tree_json()
-
         self.root.check_tree_integrity()
         qs = TestModel.objects.filter(pk__in=[self.a.pk, self.c.pk]).all()
-
         self.assertFalse(TestModel.objects.filter(pk=self.a.pk).exists())
         self.assertTrue(TestModel.objects.filter(pk=self.c.pk).exists())
