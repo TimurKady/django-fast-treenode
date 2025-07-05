@@ -97,7 +97,7 @@ class CategorySelectionForm(forms.Form):
 
 If you plan to use this widget in non-admin templates, make sure the necessary **JavaScript and CSS files** are included:
 ```html
-<link rel="stylesheet" href="/static/treenode/tree_widget.css">
+<link rel="stylesheet" href="/static/treenode/css/tree_widget.css">
 <script src="/static/treenode/js/tree_widget.js"></script>
 ```
 
