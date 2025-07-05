@@ -3,7 +3,8 @@
 
 {% block extrastyle %}
   {{ block.super }}
-  <link rel="stylesheet" href="{% static 'treenode/admin/css/forms.css' %}">
+  {# Load built-in admin form styles #}
+  <link rel="stylesheet" href="{% static '/admin/css/forms.css' %}">
   <link rel="stylesheet" href="{% static 'treenode/css/treenode_tabs.css' %}">
 {% endblock %}
 
