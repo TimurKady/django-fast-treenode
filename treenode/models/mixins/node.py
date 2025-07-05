@@ -40,18 +40,18 @@ class TreeNodeNodeMixin(models.Model):
             self.refresh()
         return self._depth
 
-    def distance_to(self, targer):
+    def distance_to(self, target):
         """Return number of edges on shortest path between two nodes."""
         self_path = self.query(objects='ancestors')
-        targer_path = targer.query(objects='ancestors')
+        target_path = target.query(objects='ancestors')
 
         i = 0
-        for a, b in zip(self_path, targer_path):
+        for a, b in zip(self_path, target_path):
             if a != b:
                 break
             i += 1
 
-        return (len(self_path) - i) + (len(targer_path) - i)
+        return (len(self_path) - i) + (len(target_path) - i)
 
     def get_index(self):
         """Get the node index (self, index in node.parent.children list)."""
