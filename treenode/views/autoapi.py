@@ -14,10 +14,12 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 
 from ..models import TreeNodeModel
+from ..settings import API_USE_JWT
+from ..utils.jwt_auth import jwt_required
 from .autocomplete import TreeNodeAutocompleteView
 from .children import TreeChildrenView
-from .search import TreeSearchView
 from .crud import TreeNodeBaseAPIView
+from .search import TreeSearchView
 
 
 class AutoTreeAPI:
