@@ -37,6 +37,8 @@ class AutoTreeAPI:
         Protects view with login_required if needed, based on model attribute
         or global settings.
         """
+        if API_USE_JWT:
+            return jwt_required(view)
         if getattr(model, 'api_login_required', None) is True:
             return login_required(view)
         if getattr(settings, 'TREENODE_API_LOGIN_REQUIRED', False):
