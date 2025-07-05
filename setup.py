@@ -18,6 +18,7 @@ setup(
         'msgpack>=1.0.0',
         'openpyxl>=3.0.0',
         'pyyaml>=5.1',
+        'PyJWT>=2.0',
     ],
     classifiers=[
         'Development Status :: 5 - Production/Stable',
