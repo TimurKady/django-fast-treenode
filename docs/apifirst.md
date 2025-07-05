@@ -111,9 +111,9 @@ No complicated payloads. No custom formats.  **TreeNode Framework** believes tha
 ### Basic Access Control
 TreeNode Framework follows an API-First philosophy: API endpoints are generated automatically for each tree model, without the need to manually register views or routes.
 
-However, API protection is currently basic — based on login sessions using Django's standard authentication system (login_required). This is simple but effective for many internal or admin-side applications.
+By default, API protection uses Django's login sessions (`login_required`).
 
-In the future, full token-based authentication (e.g., JWT) will be introduced for more robust and flexible security.
+Starting from version 3.0.9 you can enable JWT authentication by setting `TREENODE_API_USE_JWT = True` in your project settings. In this mode the API expects an `Authorization: Bearer <token>` header with a token signed using your `SECRET_KEY`.
 
 #### How to Secure Your API Step-by-Step
 Since TreeNode Framework does not provide an authentication system itself, you need to set up basic login endpoints in your project.
