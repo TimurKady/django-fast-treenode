@@ -15,7 +15,7 @@ The 3.x release series will focus on strengthening TreeNode Framework in terms o
     - Provide a fallback auto-run mode for DEBUG environments (using `atexit` or thread-based handler).
     - Ensure task queue consistency across multiple WSGI workers or scripts.
 
-* **Version 3.2 — JWT Authentication for API**
+* **Version 3.2 — JWT Authentication for API** *(implemented)*
 
     - Introduce optional JWT-based token authentication for the auto-generated API.
     - Allow easy activation through a single setting (`TREENODE_API_USE_JWT = True`).
