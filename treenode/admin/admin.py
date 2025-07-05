@@ -69,13 +69,13 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
         """Meta Class."""
 
         css = {"all": (
-            "css/treenode_admin.css",
-            "vendors/jquery-ui/jquery-ui.css",
+            "treenode/css/treenode_admin.css",
+            "treenode/vendors/jquery-ui/jquery-ui.css",
         )}
         js = (
-            "vendors/jquery-ui/jquery-ui.js",
-            # "js/lz-string.min.js",
-            "js/treenode_admin.js",
+            "treenode/vendors/jquery-ui/jquery-ui.js",
+            # "treenode/js/lz-string.min.js",
+            "treenode/js/treenode_admin.js",
         )
 
     def __init__(self, model, admin_site):
