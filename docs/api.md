@@ -233,7 +233,7 @@ obj.get_depth()
 Returns number of edges on shortest path between two nodes
 
 ```python
-obj.distance_to(targer)
+obj.distance_to(target)
 ```
 
 #### get_level
