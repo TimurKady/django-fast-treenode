@@ -18,7 +18,7 @@ SEGMENT_LENGTH = getattr(settings, "TREENODE_SEGMENT_LENGTH", 3)
 # Serialization dictionary: hexadecimal encoding, fixed segment size
 SEGMENT_BASE = 16
 
-# Nubber children per one tree node
+# Number of children per tree node
 BASE = SEGMENT_BASE ** SEGMENT_LENGTH  # 4096
 
 
