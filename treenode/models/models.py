@@ -158,10 +158,10 @@ class TreeNodeModel(
         # Update subtree
         self._update_path(self.parent_id)
         self.sqlq.flush()
-        # Clead cache
+        # Clear cache
         self.clear_cache()
 
-    # Saving and Udating methods ----------------------------------
+    # Saving and Updating methods ----------------------------------
 
     def save(self, *args, **kwargs):
         """
