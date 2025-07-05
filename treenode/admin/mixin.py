@@ -62,7 +62,7 @@ class AdminMixin(admin.ModelAdmin):
         return custom_urls + default_urls
 
     def render_changelist_rows(self, objs: list, request):
-        """Rander rows for incert to changelist."""
+        """Render rows for insert into changelist."""
         list_display = list(self.get_list_display(request))
         checkbox_field_name = ACTION_CHECKBOX_NAME
         if checkbox_field_name not in list_display:
@@ -227,7 +227,7 @@ class AdminMixin(admin.ModelAdmin):
 
     def import_view(self, request):
         """
-        Impoern View.
+        Import View.
 
         Handles file upload and initiates import processing via
         TreeNodeImporter.
