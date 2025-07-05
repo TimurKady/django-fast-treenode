@@ -242,7 +242,7 @@ class AdminMixin(admin.ModelAdmin):
             extension = os.path.splitext(filename)[1].lower().lstrip('.')
             if extension not in ['csv', 'tsv', 'json', 'xlsx', 'yaml']:
                 return JsonResponse(
-                    {"error": _(f"Invalid file format ({extension}.")},
+                    {"error": _(f"Invalid file format ({extension}).")},
                     status=200
                 )
             importer = self.TreeNodeImporter(self.model, file, extension)
