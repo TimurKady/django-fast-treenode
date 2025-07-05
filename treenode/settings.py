@@ -24,5 +24,8 @@ BASE = SEGMENT_BASE ** SEGMENT_LENGTH  # 4096
 
 TREENODE_PAD_CHAR = getattr(settings, "TREENODE_PAD_CHAR", "'0'")
 
+# Optional JWT protection for API endpoints
+API_USE_JWT = getattr(settings, "TREENODE_API_USE_JWT", False)
+
 
 # The End
