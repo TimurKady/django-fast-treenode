@@ -45,8 +45,9 @@ class TreeNodeModel(
         mx.TreeNodeAncestorsMixin, mx.TreeNodeChildrenMixin,
         mx.TreeNodeFamilyMixin, mx.TreeNodeDescendantsMixin,
         mx.TreeNodeLogicalMixin, mx.TreeNodeNodeMixin,
-        mx.TreeNodePropertiesMixin, mx.TreeNodeRootsMixin,
-        mx.TreeNodeSiblingsMixin, mx.TreeNodeTreeMixin, mx.RawSQLMixin,
+        mx.TreeNodeSearchMixin, mx.TreeNodePropertiesMixin,
+        mx.TreeNodeRootsMixin, mx.TreeNodeSiblingsMixin,
+        mx.TreeNodeTreeMixin, mx.RawSQLMixin,
         models.Model, metaclass=TreeNodeModelBase):
     """
     Abstract tree node model.
