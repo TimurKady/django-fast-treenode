@@ -141,14 +141,18 @@ class TreeTaskQueue:
             return []
 
         depth_lookup = {}
-        with connection.cursor() as cursor:
-            for pk in result_set:
-                cursor.execute(
-                    f"SELECT _depth FROM {self.model._meta.db_table} WHERE id = %s",
-                    [pk],
-                )
-                row = cursor.fetchone()
-                depth_lookup[pk] = row[0] if row else 0
+        if result_set:
+            with connection.cursor() as cursor:
+                format_ids = ', '.join(['%s'] * len(result_set))
+                sql = f"""
+                    SELECT id, _depth
+                    FROM {self.model._meta.db_table}
+                    WHERE id IN ({format_ids})
+                """
+                cursor.execute(sql, list(result_set))
+                for node_id, depth in cursor.fetchall():
+                    depth_lookup[node_id] = depth
+
 
         ordered_pks = sorted(result_set, key=lambda pk: (depth_lookup.get(pk, 0), pk))
         return [{"mode": "update", "parent_id": pk} for pk in ordered_pks]
