@@ -16,7 +16,8 @@ from .update import RawSQLMixin
 __all__ = [
     "TreeNodeAncestorsMixin", "TreeNodeChildrenMixin", "TreeNodeFamilyMixin",
     "TreeNodeDescendantsMixin", "TreeNodeLogicalMixin", "TreeNodeNodeMixin",
-    "TreeNodePropertiesMixin", "TreeNodeRootsMixin", "TreeNodeSiblingsMixin",
+    "TreeNodeSearchMixin", "TreeNodePropertiesMixin", "TreeNodeRootsMixin",
+    "TreeNodeSiblingsMixin", "TreeNodeTreeMixin", "RawSQLMixin"
     "TreeNodeTreeMixin", "RawSQLMixin"
 ]
 
