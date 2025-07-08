@@ -187,6 +187,7 @@ class TreeNodeModel(
         is_new = False
         is_shift = False
         is_move = False
+        sorting_changed = False
 
         if self.pk:
             state = self.get_db_state()
@@ -195,6 +196,14 @@ class TreeNodeModel(
                 is_move = self.parent_id != state["parent_id"]
                 if is_move:
                     self._meta.model.tasks.add("update", state["parent_id"])
+
+                if self.sorting_field != "priority":
+                    old_value = self.__class__.objects.filter(
+                        pk=self.pk
+                    ).values_list(self.sorting_field, flat=True).first()
+                    sorting_changed = old_value != getattr(
+                        self, self.sorting_field
+                    )
             else:
                 logger.error(
                     "TreeNodeModel save error: object with pk %s not found in DB",
@@ -232,12 +241,14 @@ class TreeNodeModel(
             pass
         """
 
-        if is_new or is_move or is_shift:
+        if is_new or is_move or is_shift or sorting_changed:
             # Step 1: Shift siblings
             if (is_new or is_move) and (self.priority is not None):
                 self._shift_siblings_forward()
             # Step 2: Update paths for the new parent -> sqlq
-            self._meta.model.tasks.add("update", self.parent_id)
+            path_ids = self.query.get_relative_pks(objects="ancestors", include_self=True)
+            update_root_id = path_ids[0] if path_ids else self.parent_id
+            self._meta.model.tasks.add("update", update_root_id)
             # Step 3: Clear model cache
             self.clear_cache()
 
@@ -246,7 +257,7 @@ class TreeNodeModel(
               disable_signals(post_save, model)):
             super().save(*args, **kwargs)
 
-            if is_new or is_move or is_shift:
+            if is_new or is_move or is_shift or sorting_changed:
                 # Run sql
                 # self.sqlq.flush()
                 setattr(model, 'is_dry', True)
