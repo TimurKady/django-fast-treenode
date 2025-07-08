@@ -70,8 +70,8 @@ class TreeNodeChildrenMixin(models.Model):
 
     @cached_method
     def get_children(self):
-        """Get a list containing all children."""
-        queryset = self._meta.model.objects.filter(parent_id=self.id)
+        """Get a list containing all children sorted properly."""
+        queryset = self.get_children_queryset()
         return list(queryset)
 
     @cached_method
