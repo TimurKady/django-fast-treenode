@@ -93,3 +93,14 @@ class TreeNodeModelTests(TestCase):
         qs = TestModel.objects.filter(pk__in=[self.a.pk, self.c.pk]).all()
         self.assertFalse(TestModel.objects.filter(pk=self.a.pk).exists())
         self.assertTrue(TestModel.objects.filter(pk=self.c.pk).exists())
+
+    # --- 6. Search ----------------------------------------------------------
+
+    def test_find_by_path(self):
+        path = "/".join(self.d.get_breadcrumbs(attr="name"))
+        node = TestModel.find_by_path(path, attr="name", delimiter="/")
+        self.assertEqual(node, self.d)
+
+    def test_find_in_subtree(self):
+        node = TestModel.find_in_subtree(self.a, "D", attr="name")
+        self.assertEqual(node, self.d)
