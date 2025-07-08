@@ -77,7 +77,7 @@ python manage.py shell
 Then execute:
 
 ```python
-YourTreeNodeModel.rebuild()
+YourTreeNodeModel.update_tree()
 ```
 
 !!! note
