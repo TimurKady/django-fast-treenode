@@ -11,6 +11,7 @@ The API is divided into several logical groups, each serving a specific purpose:
 - **[Descendant Methods](#descendant-methods)** – Work with entire subtrees of nodes.
 - **[Family Methods](#family-methods)** – Retrieve and analyze relationships within a node's family (ancestors, siblings, descendants).
 - **[Node Utility Methods](#node-utility-methods)** – Additional methods for retrieving node order, paths, levels, and priorities.
+- **[Search Methods](#search-methods)** – Quick node lookup utilities.
 - **[Root Node Methods](#root-node-methods)** – Manage and retrieve root nodes of trees.
 - **[Sibling Methods](#sibling-methods)** – Handle relationships between sibling nodes.
 - **[Tree Methods](#tree-methods)** – Serialize and manipulate the entire tree structure, including JSON export/import.
@@ -348,6 +349,28 @@ Returns the root node pk for the current node.
 ```python
 obj.get_root_pk()
 ```
+
+---
+
+### Search Methods
+These methods provide convenient helpers for finding nodes by
+breadcrumb paths or within a subtree.
+
+#### find_by_path
+Find a node by a path previously generated via `get_breadcrumbs`.
+```python
+cls.find_by_path("root/A/D", attr="name", delimiter="/")
+```
+
+Returns the matching node or `None`.
+
+#### find_in_subtree
+Search for a node among the descendants of a parent node.
+```python
+cls.find_in_subtree(parent, "D", attr="name")
+```
+
+Returns the first found node or `None`.
 
 ---
 
