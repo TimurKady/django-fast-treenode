@@ -7,6 +7,7 @@ from .family import TreeNodeFamilyMixin
 from .logical import TreeNodeLogicalMixin
 from .node import TreeNodeNodeMixin
 from .properties import TreeNodePropertiesMixin
+from .search import TreeNodeSearchMixin
 from .roots import TreeNodeRootsMixin
 from .siblings import TreeNodeSiblingsMixin
 from .tree import TreeNodeTreeMixin
