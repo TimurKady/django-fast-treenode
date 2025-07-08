@@ -26,88 +26,47 @@ class TreePathCompiler:
 
     @classmethod
     def update_path(cls, model, parent_id=None):
-        """
-        Rebuild subtree starting from parent_id.
+        """Rebuild subtree using BFS so parents update before children."""
+        table = model._meta.db_table
+        sort_field = model.sorting_field
 
-        If parent_id=None, then the whole tree is rebuilt.
-        Uses only fields: parent_id and id. All others (priority, _path,
-        _depth) are recalculated.
-        """
-        db_table = model._meta.db_table
-        # Will eliminate the risk if the user names the model order or user.
-        qname = connection.ops.quote_name(db_table)
+        def fetch_children(pid):
+            if pid is None:
+                where = "parent_id IS NULL"
+                params = []
+            else:
+                where = "parent_id = %s"
+                params = [pid]
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    f"SELECT id FROM {table} WHERE {where} ORDER BY {sort_field}, id",
+                    params,
+                )
+                return [row[0] for row in cursor.fetchall()]
 
-        sorting_field = model.sorting_field
-        sorting_fields = ["priority", "id"] if sorting_field == "priority" else [sorting_field]  # noqa: D5017
-        sort_expr = ", ".join([
-            f"c.{field}" if "." not in field else field
-            for field in sorting_fields
-        ])
-
-        cte_header = "(id, parent_id, new_priority, new_path, new_depth)"
-
-        row_number_expr = f"ROW_NUMBER() OVER (ORDER BY {sort_expr}) - 1"
-        hex_expr = SQLCompat.to_hex(row_number_expr)
-        lpad_expr = SQLCompat.lpad(hex_expr, SEGMENT_LENGTH, "'0'")
+        queue = []
 
         if parent_id is None:
-            new_path_expr = lpad_expr
-            base_sql = f"""
-                SELECT
-                    c.id,
-                    c.parent_id,
-                    {row_number_expr} AS new_priority,
-                    {new_path_expr} AS new_path,
-                    0 AS new_depth
-                FROM {qname} AS c
-                WHERE c.parent_id IS NULL
-            """
-            params = []
+            for idx, node_id in enumerate(fetch_children(None)):
+                queue.append((node_id, "", 0, idx))
         else:
-            path_expr = SQLCompat.concat("p._path", "'.'", lpad_expr)
-            base_sql = f"""
-                SELECT
-                    c.id,
-                    c.parent_id,
-                    {row_number_expr} AS new_priority,
-                    {path_expr} AS new_path,
-                    p._depth + 1 AS new_depth
-                FROM {qname} c
-                JOIN {qname} p ON c.parent_id = p.id
-                WHERE p.id = %s
-            """
-            params = [parent_id]
+            parent_data = model.objects.filter(pk=parent_id).values("_path", "_depth").first()
+            parent_path = parent_data["_path"] if parent_data else ""
+            depth = (parent_data["_depth"] + 1) if parent_data else 0
+            for idx, node_id in enumerate(fetch_children(parent_id)):
+                queue.append((node_id, parent_path, depth, idx))
 
-        recursive_row_number_expr = f"ROW_NUMBER() OVER (PARTITION BY c.parent_id ORDER BY {sort_expr}) - 1"
-        recursive_hex_expr = SQLCompat.to_hex(recursive_row_number_expr)
-        recursive_lpad_expr = SQLCompat.lpad(
-            recursive_hex_expr, SEGMENT_LENGTH, "'0'")
-        recursive_path_expr = SQLCompat.concat(
-            "t.new_path", "'.'", recursive_lpad_expr)
-
-        recursive_sql = f"""
-            SELECT
-                c.id,
-                c.parent_id,
-                {recursive_row_number_expr} AS new_priority,
-                {recursive_path_expr} AS new_path,
-                t.new_depth + 1 AS new_depth
-            FROM {qname} c
-            JOIN tree_cte t ON c.parent_id = t.id
-        """
-
-        final_sql = SQLCompat.update_from(
-            db_table=db_table,
-            cte_header=cte_header,
-            base_sql=base_sql,
-            recursive_sql=recursive_sql,
-            update_fields=["priority", "_path", "_depth"]
-        )
-
-        with connection.cursor() as cursor:
-            # Make params read-only
-            params = tuple(params)
-            cursor.execute(final_sql, params)
+        while queue:
+            node_id, base_path, depth, index = queue.pop(0)
+            segment = f"{index:0{SEGMENT_LENGTH}X}"
+            path = segment if base_path == "" else f"{base_path}.{segment}"
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    f"UPDATE {table} SET priority=%s, _path=%s, _depth=%s WHERE id=%s",
+                    [index, path, depth, node_id],
+                )
+            for child_idx, child_id in enumerate(fetch_children(node_id)):
+                queue.append((child_id, path, depth + 1, child_idx))
 
 
 # The End
