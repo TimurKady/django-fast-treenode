@@ -47,8 +47,15 @@ class TreeNodeDescendantsMixin(models.Model):
 
         suffix = "" if include_self else '.'
         path += suffix
-        queryset = self._meta.model.objects.filter(_path__startswith=path)
-        return queryset
+        cls = self._meta.model
+        queryset = cls.objects.filter(_path__startswith=path)
+        ordering_fields = [
+            "priority",
+            "id",
+        ] if cls.sorting_field == "priority" else [cls.sorting_field]
+        prefix = "" if cls.sorting_direction == cls.SortingChoices.ASC else "-"
+        order_args = [prefix + ordering_fields[0]] + ordering_fields[1:]
+        return queryset.order_by(*order_args)
 
     @cached_method
     def get_descendants_pks(self, include_self=False, depth=None):
