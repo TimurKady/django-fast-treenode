@@ -57,8 +57,16 @@ class TreeNodeChildrenMixin(models.Model):
         instance.save()
 
     def get_children_queryset(self):
-        """Get the children queryset."""
-        return self._meta.model.objects.filter(parent_id=self.id)
+        """Get the children queryset sorted according to model settings."""
+        cls = self._meta.model
+        qs = cls.objects.filter(parent_id=self.id)
+        ordering_fields = [
+            "priority",
+            "id",
+        ] if cls.sorting_field == "priority" else [cls.sorting_field]
+        prefix = "" if cls.sorting_direction == cls.SortingChoices.ASC else "-"
+        order_args = [prefix + ordering_fields[0]] + ordering_fields[1:]
+        return qs.order_by(*order_args)
 
     @cached_method
     def get_children(self):
