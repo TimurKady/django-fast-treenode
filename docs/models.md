@@ -121,10 +121,11 @@ class Category(TreeNodeModel):
 
 This approach ensures full Django integration, efficient queries, and correct hierarchical behavior.
 
-> **Important:**  
-> Do **not** override `Meta.ordering` in models based on `TreeNodeModel`.  
-> Internal ordering relies on the `_path` field to keep the hierarchy intact in the admin interface and elsewhere.
-> To control sibling order, use the  `sorting_field` attribute instead.
+!!! important
+    Do **not** override `Meta.ordering` in models based on `TreeNodeModel`.
+    Internal ordering relies on the `_path` field to keep the hierarchy intact
+    in the admin interface and elsewhere. To control sibling order, use the
+    `sorting_field` attribute instead.
 
 
 ---
