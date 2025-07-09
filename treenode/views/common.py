@@ -18,6 +18,12 @@ def get_model_from_request(request):
         raise Http404("Missing 'model' parameter.")
     try:
         app_label, model_name = model_label.lower().split(".")
-        return apps.get_model(app_label, model_name)
+        model = apps.get_model(app_label, model_name)
     except Exception:
         raise Http404(f"Invalid model format: {model_label}")
+
+    # Ensure the model is a subclass of TreeNodeModel
+    if not issubclass(model, TreeNodeModel):
+        raise Http404(f"{model_label} is not a TreeNodeModel.")
+
+    return model
