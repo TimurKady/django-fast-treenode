@@ -40,6 +40,13 @@ Email: timurkady@yandex.com
     z-index: auto;
 }
 
+/* Ensure dropdowns are not clipped when the widget is used for
+ * fields other than 'parent'. This class will be added dynamically
+ * by tree_widget.js to the widget's parent .form-row container. */
+.form-row.treenode-visible {
+    overflow: visible !important;
+}
+
 .tree-widget {
     position: relative;
     width: 100%;
