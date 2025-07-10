@@ -4,9 +4,9 @@ TreeNode Version Module
 
 This module defines the current version of the TreeNode package.
 
-Version: 3.2.3
+Version: 3.2.4
 Author: Timur Kady
 Email: timurkady@yandex.com
 """
 
-__version__ = '3.2.3'
+__version__ = '3.2.4'
