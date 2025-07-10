@@ -13,7 +13,7 @@ Features:
 - Supports dark mode and automatically applies theme styles.
 - Handles parent-child relationships and updates node priorities.
 
-Version: 2.1.0
+Version: 3.2.5
 Author: Timur Kady
 Email: timurkady@yandex.com
 */
