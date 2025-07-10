@@ -10,6 +10,7 @@ Email: timurkady@yandex.com
 from django.apps import apps
 from django.http import Http404
 
+from ..models import TreeNodeModel
 
 def get_model_from_request(request):
     """Get model from request."""
