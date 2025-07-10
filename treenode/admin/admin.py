@@ -36,6 +36,7 @@ from django.utils.translation import gettext_lazy as _
 
 from .mixin import AdminMixin
 from ..forms import TreeNodeForm
+from ..models import TreeNodeModel
 from ..widgets import TreeWidget
 from .importer import TreeNodeImporter
 from .exporter import TreeNodeExporter
