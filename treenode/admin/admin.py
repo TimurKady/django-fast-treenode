@@ -57,11 +57,6 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
     importer_class = None
     exporter_class = None
     ordering = []
-
-    formfield_overrides = {
-        models.ForeignKey: {'widget': TreeWidget()},
-    }
-
     change_list_template = "treenode/admin/treenode_changelist.html"
     import_export = True
 
@@ -174,6 +169,15 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
         if "parent" in form.base_fields:
             form.base_fields["parent"].widget = TreeWidget()
         return form
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        """Use TreeWidget for tree fields only."""
+        formfield = super().formfield_for_foreignkey(db_field, request, **kwargs)
+        related = getattr(db_field.remote_field, "model", None)
+        if related and issubclass(related, TreeNodeModel):
+            formfield.widget = TreeWidget()
+            formfield.widget.model = related
+        return formfield
 
     def get_search_fields(self, request):
         """Get search fields."""
