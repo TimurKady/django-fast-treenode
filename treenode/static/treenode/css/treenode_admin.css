@@ -171,7 +171,3 @@ tr.dragging td {
 .column-treenode_field {
   width: 100%;
 }
-
-tr .module .form-row {
-  overflow: visible !important;
-}
