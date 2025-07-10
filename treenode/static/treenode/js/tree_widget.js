@@ -27,6 +27,13 @@ Email: timurkady@yandex.com
       $(selector).each(function () {
         var $widget = $(this);
 
+        // Make sure the widget's parent form row allows overflow so
+        // that the dropdown menu is not clipped.
+        var $formRow = $widget.closest('.form-row');
+        if ($formRow.length) {
+          $formRow.addClass('treenode-visible');
+        }
+
         // Find the hidden input, dropdown list and display area inside
         // the container
         var $select = $widget.find('input[type="hidden"]').first();
