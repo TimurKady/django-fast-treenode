@@ -171,13 +171,16 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
         return form
 
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
-        """Use TreeWidget for tree fields only."""
+        """Use TreeWidget only for 'parent' field."""
         formfield = super().formfield_for_foreignkey(db_field, request, **kwargs)
-        related = getattr(db_field.remote_field, "model", None)
-        if related and issubclass(related, TreeNodeModel):
-            formfield.widget = TreeWidget()
-            formfield.widget.model = related
+
+        if db_field.name == "parent":
+            related = getattr(db_field.remote_field, "model", None)
+            if related and issubclass(related, TreeNodeModel):
+                formfield.widget = TreeWidget()
+                formfield.widget.model = related
         return formfield
+
 
     def get_search_fields(self, request):
         """Get search fields."""
