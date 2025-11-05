@@ -187,7 +187,7 @@ Together, these indices provide a clear and convincing measure of how well a tre
 All results were normalized relative to the best observed values. Lower values indicate better performance.
 
 | Model          | MP_Node   | AL_Node    | NS_Node   | MPTT      | Fast<br>TreeNode | Treenode<br>Framework |
-|:---------------|:---------:|:----------:|:-------- :|:---------:|:----------------:|:---------------------:|
+|:--------------:|:---------:|:----------:|:---------:|:---------:|:----------------:|:---------------------:|
 | Insert         | 3,1       | 🥇1,0     | 4,1       | 🥉2,3     | 6,6             | 🥈1,2                 |
 | Ancestors      | 156,9     | 🥇1,0     | 158,3     | 142,0      | 🥉1,8          | 🥈1,2                 |
 | Subtree        | 🥉1,3    | 75,2       | 🥇1,0    | 3,94       | 🥈3,9          | 13,3                   |
