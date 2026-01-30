@@ -115,24 +115,19 @@ class TreeNodeQuerySet(models.QuerySet):
             ._raw_delete(using=using or self.db)
 
     def __iter__(self):
-        """Iterate queryset."""
-        try:
-            if len(self.model.tasks.queue) > 0:
-                # print("🌲 TreeNodeQuerySet: auto-run (iter)")
-                self.model.tasks.run()
-        except Exception as e:
-            logging.error("⚠️ Tree flush failed silently (iter): %s", e)
+        """Iterate queryset without automatic flush.
+
+        Note: Task queue flush is now handled by TreeNodeFlushMiddleware
+        at the end of each request to avoid nested transactions.
+        """
         return super().__iter__()
 
     def _fetch_all(self):
-        """Extract data for a queryset from the database."""
-        try:
-            tasks = self.model.tasks
-            if len(tasks.queue) > 0:
-                # print("🌲 TreeNodeQuerySet: auto-run (_fetch_all)")
-                tasks.run()
-        except Exception as e:
-            logging.error("⚠️ Tree flush failed silently: %s", e)
+        """Extract data for a queryset from the database without automatic flush.
+
+        Note: Task queue flush is now handled by TreeNodeFlushMiddleware
+        at the end of each request to avoid nested transactions.
+        """
         super()._fetch_all()
 
 # ------------------------------------------------------------------

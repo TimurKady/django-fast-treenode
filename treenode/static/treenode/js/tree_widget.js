@@ -134,6 +134,24 @@ Email: timurkady@yandex.com
     // Method of drawing a node
     renderNodes: function (nodes, $container) {
       $container.empty();
+
+      // Add Root option at the beginning of the list
+      var $rootOption = $('<li></li>')
+        .addClass('tree-node tree-node-root')
+        .attr('data-id', '')  // Empty value for Root
+        .attr('data-level', 0);
+
+      $rootOption.append($('<span class="no-expand"></span>').css({
+        display: 'inline-block'
+      }));
+      $rootOption.append($('<span class="node-icon">🏠</span>').css({
+        display: 'inline-block'
+      }));
+      $rootOption.append($('<span class="node-text"></span>').text('Root'));
+
+      $container.append($rootOption);
+
+      // Render other nodes
       $.each(nodes, function (index, node) {
         var $nodeElem = TreeWidget.formatNode(node);
         $container.append($nodeElem);
@@ -201,10 +219,14 @@ Email: timurkady@yandex.com
         e.stopPropagation();
         var $li = $(this).closest('li.tree-node');
         var nodeId = $li.data('id');
-        $select.val(nodeId);
+
+        // If this is Root, set empty string
+        $select.val(nodeId === '' ? '' : nodeId);
         $select.data('selected', nodeId);
+
         // Update the displayed selected value
-        $widget.find('.selected-node').text($(this).text());
+        var displayText = nodeId === '' ? 'Root' : $li.find('.node-text').text();
+        $widget.find('.selected-node').text(displayText);
         $dropdown.hide();
       });
 
