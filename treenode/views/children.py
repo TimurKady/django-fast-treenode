@@ -33,7 +33,7 @@ class TreeChildrenView(View):
                 "level": node.get_depth(),
                 "is_leaf": node.is_leaf(),
             }
-            for node in obj.get_children()
+            for node in obj.get_children_queryset()
         ]
         return JsonResponse({"results": results})
 
