@@ -117,8 +117,13 @@ class AdminMixin(admin.ModelAdmin):
         expanded = request.GET.get("expanded", "[]")
 
         if parent_id:
-            parent = self.model.objects.filter(pk=parent_id).first()
-            rows_list = parent.get_children() if parent else []
+            # Use direct queryset to bypass @cached_method and avoid
+            # stale data from TreeCache
+            rows_list = list(
+                self.model.objects.filter(parent_id=parent_id)
+                .select_related('parent')
+                .order_by('_path')
+            )
 
         elif query:
             name_field = getattr(self.model, "display_field", "id")

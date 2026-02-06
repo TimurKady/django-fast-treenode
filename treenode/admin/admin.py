@@ -151,7 +151,6 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
         """Get queryset."""
         qs = super().get_queryset(request)
         return qs.select_related('parent')\
-            .prefetch_related('children')\
             .order_by('_path')
 
     def get_list_display(self, request):

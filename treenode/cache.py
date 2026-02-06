@@ -106,6 +106,9 @@ class TreeCache:
                 self.key_prefix[key] = prefix
                 self.prefix_index[prefix].add(key)
 
+                # Clean queue_index after moving to cache
+                self.queue_index.pop(key, None)
+
                 if self.total_size > self.max_size:
                     self._evict_cache()
             else:
@@ -148,7 +151,8 @@ class TreeCache:
         """
         Invalidate all keys with the given prefix (e.g. "node_").
 
-        Also purges pending items in the queue with the same prefix.
+        Also purges pending items in the queue and queue_index with
+        the same prefix.
         """
         prefix = f"{prefix}|"
         keys_to_remove = self.prefix_index.pop(prefix, set())
@@ -163,6 +167,10 @@ class TreeCache:
         with self.queue_lock:
             self.queue = deque(
                 [(k, v) for k, v in self.queue if not k.startswith(prefix)])
+            # Clean queue_index for all keys matching the prefix
+            stale_keys = [k for k in self.queue_index if k.startswith(prefix)]
+            for k in stale_keys:
+                del self.queue_index[k]
 
     def clear(self):
         """Fully reset the cache, indexes, and the background queue."""
@@ -174,6 +182,7 @@ class TreeCache:
         self.key_prefix.clear()
         with self.queue_lock:
             self.queue.clear()
+            self.queue_index.clear()
 
     def info(self) -> dict:
         """Return runtime statistics for monitoring and diagnostics."""
