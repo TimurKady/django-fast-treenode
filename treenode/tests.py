@@ -2,9 +2,11 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
+from django.urls import path
+from django.db import DatabaseError
 from django.template import Context
 from django.template.loader import render_to_string
-from django.test import RequestFactory, TestCase
+from django.test import Client, RequestFactory, TestCase, override_settings
 
 from tests.models import TestModel
 from treenode.admin.mixin import AdminMixin
@@ -13,6 +15,23 @@ from treenode.templatetags.treenode_admin import tree_result_list
 
 class TestAdminMixin(AdminMixin):
     """Admin class for testing row rendering helpers."""
+
+
+
+
+class OpenAdminSite(AdminSite):
+    """Admin site variant that allows requests in test environment."""
+
+    def has_permission(self, request):
+        """Always allow access for integration endpoint tests."""
+        return True
+
+
+test_admin_site = OpenAdminSite(name="open_admin")
+test_admin_site.register(TestModel, TestAdminMixin)
+urlpatterns = [
+    path("admin/", test_admin_site.urls),
+]
 
 
 class AdminRowsRenderTests(TestCase):
@@ -156,6 +175,56 @@ class AdminMoveViewTests(TestCase):
         self.leaf.refresh_from_db()
         self.assertEqual(response.status_code, 200)
         self.assertEqual(self.leaf.parent_id, self.right.pk)
+
+
+    def test_ajax_move_returns_json_error_on_lock(self):
+        """Return explicit JSON error when row lock is not available."""
+        request = self.factory.post(
+            "/admin/tests/testmodel/move/",
+            {
+                "node_id": self.leaf.pk,
+                "anchor_id": self.right.pk,
+                "position": "inside-last",
+            },
+        )
+        lock_error = DatabaseError("lock")
+        lock_error.__cause__ = SimpleNamespace(pgcode="55P03")
+
+        with patch(
+            "treenode.admin.mixin.TreeMutationService.move_node",
+            side_effect=lock_error,
+        ):
+            response = self.admin.ajax_move_view(request)
+
+        self.assertEqual(response.status_code, 423)
+        self.assertIn("error", response.json())
+
+    @override_settings(ROOT_URLCONF="treenode.tests")
+    def test_move_endpoint_returns_with_consistent_tree_fields(self):
+        """Ensure move endpoint response is returned after immediate tree sync."""
+        client = Client()
+
+        response = client.post(
+            "/admin/tests/testmodel/move/",
+            {
+                "node_id": self.leaf.pk,
+                "anchor_id": self.right.pk,
+                "position": "inside-last",
+            },
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        moved_leaf = TestModel.objects.get(pk=self.leaf.pk)
+        right_node = TestModel.objects.get(pk=self.right.pk)
+        right_children = list(
+            TestModel.objects.filter(parent_id=right_node.pk).order_by("priority", "id")
+        )
+
+        self.assertEqual(moved_leaf.parent_id, right_node.pk)
+        self.assertEqual(moved_leaf._depth, right_node._depth + 1)
+        self.assertTrue(moved_leaf._path.startswith(f"{right_node._path}."))
+        self.assertEqual(moved_leaf.priority, right_children.index(moved_leaf))
 
 
 # The End
