@@ -72,6 +72,10 @@ class RawSQLMixin(models.Model):
         Only fields are used: parent_id and id. All others (priority, _path,
         _depth) are recalculated.
         """
+        if connection.vendor == "sqlite":
+            self._update_path_sqlite(parent_id=parent_id)
+            return
+
         db_table = self._meta.db_table
 
         sorting_field = self.sorting_field
@@ -149,6 +153,69 @@ class RawSQLMixin(models.Model):
         """
 
         self.sqlq.append((final_sql.format(sort_expr=sort_expr), params))
+
+    def _update_path_sqlite(self, parent_id):
+        """Rebuild tree path fields for SQLite using ORM recursion."""
+        model = self._meta.model
+
+        sorting_field = self.sorting_field
+        sorting_fields = ["priority", "id"] if sorting_field == "priority" else [sorting_field, "id"]
+
+        nodes_to_update = []
+
+        if parent_id is None:
+            roots = list(model.objects.filter(parent_id__isnull=True).order_by(*sorting_fields))
+            for index, node in enumerate(roots):
+                node.priority = index
+                node._path = self._format_path_segment(index)
+                node._depth = 0
+                nodes_to_update.append(node)
+                self._collect_subtree_updates(
+                    model=model,
+                    parent_node=node,
+                    sorting_fields=sorting_fields,
+                    nodes_to_update=nodes_to_update,
+                )
+        else:
+            parent = model.objects.only("id", "_path", "_depth").get(pk=parent_id)
+            self._collect_subtree_updates(
+                model=model,
+                parent_node=parent,
+                sorting_fields=sorting_fields,
+                nodes_to_update=nodes_to_update,
+            )
+
+        if nodes_to_update:
+            sql = f"""
+                UPDATE {self._meta.db_table}
+                SET priority = %s, _path = %s, _depth = %s
+                WHERE id = %s
+            """
+            params = [
+                [node.priority, node._path, node._depth, node.pk]
+                for node in nodes_to_update
+            ]
+            with connection.cursor() as cursor:
+                cursor.executemany(sql, params)
+
+    def _collect_subtree_updates(self, model, parent_node, sorting_fields, nodes_to_update):
+        """Recursively calculate and collect path update values for descendants."""
+        children = list(model.objects.filter(parent_id=parent_node.pk).order_by(*sorting_fields))
+        for index, child in enumerate(children):
+            child.priority = index
+            child._path = f"{parent_node._path}.{self._format_path_segment(index)}"
+            child._depth = parent_node._depth + 1
+            nodes_to_update.append(child)
+            self._collect_subtree_updates(
+                model=model,
+                parent_node=child,
+                sorting_fields=sorting_fields,
+                nodes_to_update=nodes_to_update,
+            )
+
+    def _format_path_segment(self, index):
+        """Build uppercase hexadecimal path segment with fixed width."""
+        return f"{index:0{SEGMENT_LENGTH}X}"
 
 
 # The End
