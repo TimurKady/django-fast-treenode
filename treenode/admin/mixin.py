@@ -92,8 +92,9 @@ class AdminMixin(admin.ModelAdmin):
 
             rows.append({
                 "node_id": obj.pk,
-                "attrs": f'data-node-id="{obj.pk}" data-parent-of="{obj.parent_id or ""}" class="model-{self.model._meta.model_name} pk-{obj.pk}"',  # noqa: D501
+                "attrs": f'data-node-id="{obj.pk}" data-parent-id="{obj.parent_id or ""}" data-depth="{obj.get_depth()}" class="model-{self.model._meta.model_name} pk-{obj.pk}"',  # noqa: D501
                 "parent_id": obj.parent_id,
+                "depth": obj.get_depth(),
                 "cells": list(zip(row_data, td_classes)),
             })
         return rows
@@ -218,6 +219,7 @@ class AdminMixin(admin.ModelAdmin):
         if mode == 'after' and node.parent == target:
             # User wants to insert a node after a node-parent
             # print("User wants to insert a node after a node-parent.")
+
             pass
 
         # Debug
