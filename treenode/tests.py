@@ -1,3 +1,4 @@
+import json
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -188,7 +189,9 @@ class AdminMoveViewTests(TestCase):
             },
         )
         lock_error = DatabaseError("lock")
-        lock_error.__cause__ = SimpleNamespace(pgcode="55P03")
+        lock_cause = Exception("lock busy")
+        lock_cause.pgcode = "55P03"
+        lock_error.__cause__ = lock_cause
 
         with patch(
             "treenode.admin.mixin.TreeMutationService.move_node",
@@ -197,7 +200,8 @@ class AdminMoveViewTests(TestCase):
             response = self.admin.ajax_move_view(request)
 
         self.assertEqual(response.status_code, 423)
-        self.assertIn("error", response.json())
+        payload = json.loads(response.content.decode("utf-8"))
+        self.assertIn("error", payload)
 
     @override_settings(ROOT_URLCONF="treenode.tests")
     def test_move_endpoint_returns_with_consistent_tree_fields(self):

@@ -65,26 +65,27 @@ class TreeTaskQueue:
             parent_ids = [t["parent_id"] for t in optimized if t["parent_id"] is not None]
 
             with transaction.atomic():
-                if any(t["parent_id"] is None for t in optimized):
-                    try:
-                        with connection.cursor() as cursor:
-                            cursor.execute(
-                                f"SELECT id FROM {self.model._meta.db_table} WHERE parent_id IS NULL FOR UPDATE NOWAIT"
-                            )
-                    except Exception as e:
-                        print(f"[TreeTaskQueue] Skipped (root locked): {e}")
-                        return
-                else:
-                    try:
-                        with connection.cursor() as cursor:
-                            for parent_id in parent_ids:
+                if connection.vendor != "sqlite":
+                    if any(t["parent_id"] is None for t in optimized):
+                        try:
+                            with connection.cursor() as cursor:
                                 cursor.execute(
-                                    f"SELECT id FROM {self.model._meta.db_table} WHERE id = %s FOR UPDATE NOWAIT",
-                                    [parent_id],
+                                    f"SELECT id FROM {self.model._meta.db_table} WHERE parent_id IS NULL FOR UPDATE NOWAIT"
                                 )
-                    except Exception as e:
-                        print(f"[TreeTaskQueue] Skipped (parent locked): {e}")
-                        return
+                        except Exception as e:
+                            print(f"[TreeTaskQueue] Skipped (root locked): {e}")
+                            return
+                    else:
+                        try:
+                            with connection.cursor() as cursor:
+                                for parent_id in parent_ids:
+                                    cursor.execute(
+                                        f"SELECT id FROM {self.model._meta.db_table} WHERE id = %s FOR UPDATE NOWAIT",
+                                        [parent_id],
+                                    )
+                        except Exception as e:
+                            print(f"[TreeTaskQueue] Skipped (parent locked): {e}")
+                            return
 
                 for task in optimized:
                     if task["mode"] == "update":
