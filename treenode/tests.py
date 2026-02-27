@@ -91,5 +91,72 @@ class AdminRowsRenderTests(TestCase):
         self.assertNotIn("data-parent-of", attrs)
 
 
+class AdminMoveViewTests(TestCase):
+    """Tests for ajax_move_view parameter contract and validations."""
+
+    @classmethod
+    def setUpTestData(cls):
+        """Build a small fixture tree for move-view tests."""
+        cls.root = TestModel.objects.create(name="root-move", priority=0)
+        cls.left = TestModel.objects.create(
+            name="left", parent=cls.root, priority=1
+        )
+        cls.right = TestModel.objects.create(
+            name="right", parent=cls.root, priority=2
+        )
+        cls.leaf = TestModel.objects.create(
+            name="leaf", parent=cls.left, priority=1
+        )
+
+    def setUp(self):
+        """Prepare request factory and admin wrapper."""
+        self.factory = RequestFactory()
+        self.admin = TestAdminMixin(TestModel, AdminSite())
+
+    def test_ajax_move_requires_anchor_for_before_after(self):
+        """Return validation error when before/after has no anchor_id."""
+        request = self.factory.post(
+            "/admin/tests/testmodel/move/",
+            {
+                "node_id": self.left.pk,
+                "anchor_id": "",
+                "position": "before",
+            },
+        )
+        response = self.admin.ajax_move_view(request)
+
+        self.assertEqual(response.status_code, 422)
+
+    def test_ajax_move_rejects_move_to_own_subtree(self):
+        """Reject move when anchor is inside moved node subtree."""
+        request = self.factory.post(
+            "/admin/tests/testmodel/move/",
+            {
+                "node_id": self.left.pk,
+                "anchor_id": self.leaf.pk,
+                "position": "inside-last",
+            },
+        )
+        response = self.admin.ajax_move_view(request)
+
+        self.assertEqual(response.status_code, 409)
+
+    def test_ajax_move_inside_last_moves_under_anchor(self):
+        """Move node into anchor as the last child for inside-last."""
+        request = self.factory.post(
+            "/admin/tests/testmodel/move/",
+            {
+                "node_id": self.leaf.pk,
+                "anchor_id": self.right.pk,
+                "position": "inside-last",
+            },
+        )
+        response = self.admin.ajax_move_view(request)
+
+        self.leaf.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self.leaf.parent_id, self.right.pk)
+
+
 # The End
 

@@ -76,8 +76,7 @@
 
   var ChangeList = {
     $tableBody: null,
-    isShiftPressed: false,
-    activeTargetRow: null,
+    dropContext: null,
     isMoving: false,
     storageKey: "treenode_expanded",
 
@@ -241,18 +240,6 @@
         self.collapseAll();
       });
 
-      $(document).on("keydown", function(e) {
-        if (e.key === "Shift") {
-          self.isShiftPressed = true;
-          self.updateDndHighlight();
-        }
-      }).on("keyup", function(e) {
-        if (e.key === "Shift") {
-          self.isShiftPressed = false;
-          self.updateDndHighlight();
-        }
-      });
-
       $('#result_list').on('change', '#action-toggle', function() {
         $('input.action-select').prop('checked', this.checked);
       });
@@ -276,62 +263,128 @@
         },
         start: function(e, ui) {
           TreeFx.markDragging(ui.item, true);
-        },
-        over: function(e, ui) {
+          self.setDropContext(null, null, null);
           self.updateDndHighlight();
+        },
+        sort: function(e, ui) {
+          self.updateDndHighlight(e, ui);
         },
         stop: function(e, ui) {
           TreeFx.markDragging(ui.item, false);
           const $item = ui.item;
           const nodeId = $item.data("node-id");
-          const prevId = $item.prev().data("node-id") || null;
-          const mode = self.isShiftPressed ? 'child' : 'after';
+          self.updateDndHighlight(e, ui);
 
-          if (self.activeTargetRow) {
-            self.activeTargetRow.removeClass("target-as-child");
-            self.activeTargetRow = null;
-          }
+          const context = self.resolveDropContext();
 
-          self.applyMove(nodeId, prevId, mode);
+          self.clearDndHighlights();
+          self.setDropContext(null, null, null);
+
+          self.applyMove(nodeId, context.anchorId, context.position);
           TreeFx.flashInsert(nodeId);
         },
       });
     },
 
-    updateDndHighlight: function() {
-      const $placeholder = this.$tableBody.find("tr.treenode-placeholder");
-      const $target = $placeholder.prev();
+    setDropContext: function($row, anchorId, position) {
+      this.dropContext = {
+        $row: $row || null,
+        anchorId: anchorId || null,
+        position: position || null,
+      };
+    },
 
-      if (!$target.length || !$target.data("node-id")) {
-        this.$tableBody.find("tr.target-as-child").removeClass("target-as-child");
-        this.activeTargetRow = null;
+    resolveDropContext: function() {
+      if (this.dropContext && this.dropContext.position) {
+        return {
+          anchorId: this.dropContext.anchorId,
+          position: this.dropContext.position,
+        };
+      }
+
+      const $placeholder = this.$tableBody.find("tr.treenode-placeholder");
+      const $prev = $placeholder.prev("tr[data-node-id]");
+
+      if ($prev.length) {
+        return {
+          anchorId: $prev.data("node-id"),
+          position: "after",
+        };
+      }
+
+      return {
+        anchorId: null,
+        position: "inside-last",
+      };
+    },
+
+    clearDndHighlights: function() {
+      this.$tableBody.find("tr.drop-before, tr.drop-after, tr.drop-inside")
+        .removeClass("drop-before drop-after drop-inside");
+    },
+
+    calculateDropContext: function(event, ui) {
+      if (!event || typeof event.clientX !== "number" || typeof event.clientY !== "number") {
+        return this.resolveDropContext();
+      }
+
+      const hoveredElement = document.elementFromPoint(event.clientX, event.clientY);
+      const $hoveredRow = $(hoveredElement).closest("tr[data-node-id]");
+      const $draggedRow = ui && ui.item ? ui.item : $();
+
+      if (!$hoveredRow.length || ($draggedRow.length && $hoveredRow.is($draggedRow))) {
+        return this.resolveDropContext();
+      }
+
+      const rect = $hoveredRow.get(0).getBoundingClientRect();
+      const offsetY = event.clientY - rect.top;
+      const zoneRatio = rect.height > 0 ? offsetY / rect.height : 0.5;
+      let position = "inside-last";
+
+      if (zoneRatio < 0.33) {
+        position = "before";
+      } else if (zoneRatio > 0.66) {
+        position = "after";
+      }
+
+      return {
+        $row: $hoveredRow,
+        anchorId: $hoveredRow.data("node-id"),
+        position: position,
+      };
+    },
+
+    updateDndHighlight: function(event, ui) {
+      const context = this.calculateDropContext(event, ui);
+      const $target = context.$row;
+
+      this.clearDndHighlights();
+
+      if (!$target || !$target.length) {
+        this.setDropContext(null, context.anchorId, context.position);
         return;
       }
 
-      if (this.isShiftPressed) {
-        if (!this.activeTargetRow || !this.activeTargetRow.is($target)) {
-          this.$tableBody.find("tr.target-as-child").removeClass("target-as-child");
-          $target.addClass("target-as-child");
-          this.activeTargetRow = $target;
-        }
+      if (context.position === "before") {
+        $target.addClass("drop-before");
+      } else if (context.position === "after") {
+        $target.addClass("drop-after");
       } else {
-        if (this.activeTargetRow) {
-          this.activeTargetRow.removeClass("target-as-child");
-          this.activeTargetRow = null;
-        }
+        $target.addClass("drop-inside");
       }
+
+      this.setDropContext($target, context.anchorId, context.position);
     },
 
-    applyMove: function(nodeId, targetId, mode) {
+    applyMove: function(nodeId, anchorId, position) {
       if (this.isMoving) return;
 
       this.isMoving = true;
-      this.activeTargetRow = null;
 
       const params = {
         node_id: nodeId,
-        target_id: targetId,
-        mode: mode
+        anchor_id: anchorId,
+        position: position
       };
 
       $.ajax({

@@ -171,62 +171,92 @@ class AdminMixin(admin.ModelAdmin):
         """
         Perform drag-and-drop move operation for a node.
 
-        Moves a node relative to a target node using the specified mode.
+        Expects explicit anchor/position contract:
+        - node_id: moved node id
+        - anchor_id: reference node id (can be empty for root placement)
+        - position: before | after | inside-last
         """
-        # 1. Extracting parameters
         node_id = request.POST.get("node_id")
-        target_id = request.POST.get("target_id")
-        mode = request.POST.get("mode")
+        anchor_id_raw = request.POST.get("anchor_id")
+        position = request.POST.get("position")
 
-        if not (node_id and mode):
+        if not node_id or not position:
             return JsonResponse({"error": _("Missing parameters.")}, status=400)
 
-        # 2. Getting objects
         node = self.model.objects.filter(pk=node_id).first()
-        if not node or mode not in ("child", "after"):
+        allowed_positions = {"before", "after", "inside-last"}
+
+        if not node:
             return JsonResponse(
-                {"error": _(f"Invalid node ({node_id}) or mode ({mode}).")},
+                {"error": _(f"Invalid node ({node_id}).")},
                 status=422
             )
 
-        # Prepare the target
-        if not target_id or target_id == 'null':
-            # Insetr like a root
-            target_id = None
-            target = None
-        else:
-            target_id = int(target_id)
-            target = self.model.objects.filter(pk=target_id).first()
+        if position not in allowed_positions:
+            return JsonResponse(
+                {"error": _(f"Invalid position ({position}).")},
+                status=422
+            )
 
-        # 3. Protection from moving into your descendants
+        if position in {"before", "after"} and not anchor_id_raw:
+            return JsonResponse(
+                {
+                    "error": _(
+                        "anchor_id is required for before/after position."
+                    )
+                },
+                status=422
+            )
+
+        anchor = None
+        anchor_id = None
+
+        if anchor_id_raw and anchor_id_raw != 'null':
+            try:
+                anchor_id = int(anchor_id_raw)
+            except (TypeError, ValueError):
+                return JsonResponse(
+                    {"error": _(f"Invalid anchor id ({anchor_id_raw}).")},
+                    status=422
+                )
+            anchor = self.model.objects.filter(pk=anchor_id).first()
+            if not anchor:
+                return JsonResponse(
+                    {"error": _(f"Anchor node ({anchor_id}) not found.")},
+                    status=422
+                )
+
         descendants_pks = node.query("descendants", include_self=True)
-        if target_id in descendants_pks:
-            return JsonResponse({
-                "error": _("Cannot move a node into its own descendants.")
-            }, status=409)
+        if anchor_id in descendants_pks:
+            return JsonResponse(
+                {"error": _("Cannot move a node into its own descendants.")},
+                status=409
+            )
 
-        # 4. Positioning and moving
         sorting_mode = self.model.sorting_field == 'priority'
-        if target:
-            position = {
-                "after": 'right-sibling' if sorting_mode else 'sorted-sibling',
-                "child": 'last-child' if sorting_mode else 'sorted-child'
-            }[mode]
+        move_position_map = {
+            "before": "left-sibling" if sorting_mode else "sorted-sibling",
+            "after": "right-sibling" if sorting_mode else "sorted-sibling",
+            "inside-last": "last-child" if sorting_mode else "sorted-child",
+        }
+
+        if not anchor:
+            if position in {"before", "after"}:
+                return JsonResponse(
+                    {
+                        "error": _(
+                            "anchor_id cannot be empty for before/after position."
+                        )
+                    },
+                    status=422
+                )
+            move_target = None
+            move_position = 'last-root' if sorting_mode else 'sorted-root'
         else:
-            position = 'first-root' if sorting_mode else 'sorted-root'
+            move_target = anchor
+            move_position = move_position_map[position]
 
-        # 5. Adjustments
-        if mode == 'after' and node.parent == target:
-            # User wants to insert a node after a node-parent
-            # print("User wants to insert a node after a node-parent.")
-
-            pass
-
-        # Debug
-        # print(mode, "-", position)
-
-        # Moving
-        node.move_to(target, position)
+        node.move_to(move_target, move_position)
 
         return JsonResponse({
             "message": _("1 node successfully moved")
