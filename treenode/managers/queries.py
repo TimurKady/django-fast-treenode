@@ -39,7 +39,7 @@ class TreeQuery:
         Each query is a tuple: (sql, params).
         Returns a tuple: (combined_sql, combined_params).
         """
-        union_query = " UNION ALL ".join(f"({q[0]})" for q in queries)
+        union_query = " UNION ALL ".join(q[0] for q in queries)
         combined_params = []
         for q in queries:
             combined_params.extend(q[1])
