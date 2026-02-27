@@ -15,6 +15,7 @@ from datetime import datetime
 from django.contrib import admin
 from django.contrib.admin.helpers import ACTION_CHECKBOX_NAME
 from django.contrib.admin.utils import lookup_field
+from django.db import DatabaseError
 from django.db.models import Q
 from django.http import HttpResponseBadRequest
 from django.http import JsonResponse
@@ -25,6 +26,8 @@ from django.utils.decorators import method_decorator
 from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.cache import never_cache
+
+from ..services import TreeMutationService
 
 
 class AdminMixin(admin.ModelAdmin):
@@ -256,7 +259,22 @@ class AdminMixin(admin.ModelAdmin):
             move_target = anchor
             move_position = move_position_map[position]
 
-        node.move_to(move_target, move_position)
+        mutation_service = TreeMutationService(self.model)
+
+        try:
+            mutation_service.move_node(
+                node=node,
+                target=move_target,
+                position=move_position,
+            )
+        except DatabaseError as error:
+            lock_code = getattr(getattr(error, "__cause__", None), "pgcode", None)
+            if lock_code == "55P03":
+                return JsonResponse(
+                    {"error": _("Could not acquire row lock for move operation.")},
+                    status=423,
+                )
+            raise
 
         return JsonResponse({
             "message": _("1 node successfully moved")
