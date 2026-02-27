@@ -1,9 +1,9 @@
 /**
  * treenode_admin.js
  *
- * Cleaned version 3.1.0 — TreeNode Admin extension for Django Admin.
+ * Cleaned version 3.1.1 — TreeNode Admin extension for Django Admin.
  * - No AJAX loading of children
- * - No persistence in localStorage
+ * - Defensive persistence in localStorage (state is restored only for the same tree snapshot)
  * - Local-only expand/collapse logic
  * - Compatible with pre-rendered full tree
  *
@@ -79,11 +79,33 @@
     isShiftPressed: false,
     activeTargetRow: null,
     isMoving: false,
+    storageKey: "treenode_expanded",
 
     init: function() {
       this.$tableBody = $('table#result_list tbody');
+      this.configureStorageKey();
       this.bindEvents();
       this.enableDragAndDrop();
+    },
+
+    configureStorageKey: function() {
+      const explicitLabel = $("#changelist").data("model-label");
+      const fallbackLabel = $("body").data("app-label") || "default";
+      const label = explicitLabel || fallbackLabel;
+      this.storageKey = `treenode_expanded:${label}`;
+    },
+
+    getTreeSignature: function() {
+      if (!this.$tableBody) {
+        return "";
+      }
+
+      return this.$tableBody.find("tr").map(function() {
+        const $row = $(this);
+        const nodeId = $row.data("node-id") || "";
+        const parentId = $row.data("parent-id") || "";
+        return `${nodeId}:${parentId}`;
+      }).get().join("|");
     },
     
     // Save expanded nodes to localStorage
@@ -97,9 +119,12 @@
       }).get().filter(Boolean);
     
       if (this.expandedNodes.length === 0) {
-        localStorage.removeItem("treenode_expanded");
+        localStorage.removeItem(this.storageKey);
       } else {
-        localStorage.setItem("treenode_expanded", JSON.stringify(this.expandedNodes));
+        localStorage.setItem(this.storageKey, JSON.stringify({
+          signature: this.getTreeSignature(),
+          expandedNodes: this.expandedNodes,
+        }));
       }
     
       const count = $("#result_list tbody tr").length;
@@ -112,7 +137,25 @@
     
     // Restore expanded nodes from localStorage
     restoreTreeState: function() {
-      const expanded = JSON.parse(localStorage.getItem("treenode_expanded") || "[]");
+      const raw = localStorage.getItem(this.storageKey);
+      if (!raw) {
+        return;
+      }
+
+      let payload;
+      try {
+        payload = JSON.parse(raw);
+      } catch (error) {
+        localStorage.removeItem(this.storageKey);
+        return;
+      }
+
+      if (!payload || payload.signature !== this.getTreeSignature()) {
+        localStorage.removeItem(this.storageKey);
+        return;
+      }
+
+      const expanded = Array.isArray(payload.expandedNodes) ? payload.expandedNodes : [];
       for (const nodeId of expanded) {
         ChangeList.expandNode(nodeId);
       }
