@@ -55,7 +55,7 @@ class TreeQuery:
 
         The current node is not included.
         """
-        sql = f"SELECT id, priority FROM {self.db_table} WHERE parent_id = %s ORDER BY priority"  # noqa: D501
+        sql = f"SELECT id, priority FROM {self.db_table} WHERE parent_id = %s ORDER BY _path, id"  # noqa: D501
         params = [self.node.pk]
         return sql, params
 
@@ -67,21 +67,21 @@ class TreeQuery:
         a UNION ALL.
         """
         if self.node.parent_id is None:
-            sql1 = f"SELECT id, priority FROM {self.db_table} WHERE parent_id IS NULL AND id <> %s"  # noqa: D501
+            sql1 = f"SELECT id, priority, _path FROM {self.db_table} WHERE parent_id IS NULL AND id <> %s"  # noqa: D501
             params1 = [self.node.pk]
         else:
-            sql1 = f"SELECT id, priority FROM {self.db_table} WHERE parent_id = %s AND id <> %s"  # noqa: D501
+            sql1 = f"SELECT id, priority, _path FROM {self.db_table} WHERE parent_id = %s AND id <> %s"  # noqa: D501
             params1 = [self.node.parent_id, self.node.pk]
 
         if include_self:
-            sql2 = f"SELECT id, priority FROM {self.db_table} WHERE id = %s"
+            sql2 = f"SELECT id, priority, _path FROM {self.db_table} WHERE id = %s"
             params2 = [self.node.pk]
             combined_sql, combined_params = self.wrap_union_all(
                 [(sql1, params1), (sql2, params2)])
-            sql = self.order_by(combined_sql, "priority")
+            sql = self.order_by(combined_sql, "_path, id")
             return sql, combined_params
         else:
-            sql = self.order_by(sql1, "priority")
+            sql = self.order_by(sql1, "_path, id")
             return sql, params1
 
     def get_descendants(self, include_self, depth):
@@ -95,7 +95,7 @@ class TreeQuery:
         like_pattern = self.node._path + '.%'  # emulate startswith
 
         base_sql = f"""
-            SELECT id, _depth, priority
+            SELECT id, _depth, priority, _path
             FROM {self.db_table}
             WHERE _path LIKE %s
         """
@@ -111,7 +111,7 @@ class TreeQuery:
 
         if include_self:
             sql_self = f"""
-                SELECT id, _depth, priority
+                SELECT id, _depth, priority, _path
                 FROM {self.db_table}
                 WHERE id = %s
             """
@@ -122,7 +122,7 @@ class TreeQuery:
         else:
             union_sql, union_params = base_sql, params
 
-        union_sql = self.order_by(union_sql, "_depth, priority")
+        union_sql = self.order_by(union_sql, "_path, id")
         return union_sql, union_params
 
     '''
@@ -147,13 +147,13 @@ class TreeQuery:
             params.append(depth_val + depth)
 
         if include_self:
-            sql_self = f"SELECT id, _depth, priority FROM {self.db_table} WHERE id = %s"  # noqa: D501
+            sql_self = f"SELECT id, _depth, priority, _path FROM {self.db_table} WHERE id = %s"  # noqa: D501
             union_sql, union_params = self.wrap_union_all(
                 [(base_sql, params), (sql_self, [self.node.pk])])
         else:
             union_sql, union_params = base_sql, params
 
-        union_sql = self.order_by(union_sql, "_depth, priority")
+        union_sql = self.order_by(union_sql, "_path, id")
         return union_sql, union_params
     '''
 
@@ -191,15 +191,15 @@ class TreeQuery:
         """
         ancestors_condition = "_path < %s"
         descendants_condition = "(_path >= %s AND _path < %s)"
-        family_sql = f"SELECT id, _depth, priority FROM {self.db_table} WHERE {ancestors_condition} OR {descendants_condition}"  # noqa: D501
+        family_sql = f"SELECT id, _depth, priority, _path FROM {self.db_table} WHERE {ancestors_condition} OR {descendants_condition}"  # noqa: D501
         params = [self.node._path, self.node._path + ".", self.node._path + "/"]
 
         queries = [(family_sql, params)]
         if include_self:
-            sql_self = f"SELECT id, _depth, priority FROM {self.db_table} WHERE id = %s"  # noqa: D501
+            sql_self = f"SELECT id, _depth, priority, _path FROM {self.db_table} WHERE id = %s"  # noqa: D501
             queries.append((sql_self, [self.node.pk]))
         combined_sql, combined_params = self.wrap_union_all(queries)
-        combined_sql = self.order_by(combined_sql, "_depth, priority")
+        combined_sql = self.order_by(combined_sql, "_path, id")
         return combined_sql, combined_params
 
     def get_root(self):
@@ -210,7 +210,7 @@ class TreeQuery:
         """
         segments = self.node._path.split(".")
         root_segment = segments[0]
-        sql = f"SELECT id, priority FROM {self.db_table} WHERE _path = %s ORDER BY priority"  # noqa: D501
+        sql = f"SELECT id, priority FROM {self.db_table} WHERE _path = %s ORDER BY _path, id"  # noqa: D501
         params = [root_segment]
         return sql, params
 
@@ -274,3 +274,5 @@ class TreeQueryManager:
         if instance is None:
             return self
         return TreeQuery(instance)
+
+# The End

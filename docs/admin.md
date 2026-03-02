@@ -23,6 +23,8 @@ class CategoryAdmin(TreeNodeModelAdmin):
 
 The tree structure in the admin panel **loads dynamically as nodes are expanded**. This allows handling **large datasets** efficiently, preventing performance issues.
 
+TreeNode uses `_path` as the canonical tree order in admin responses and queryset traversal, so nodes are rendered in hierarchical order consistently.
+
 You can choose from three display modes:
 
 - **`TREENODE_DISPLAY_MODE_ACCORDION` (default)**  

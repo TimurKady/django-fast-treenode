@@ -142,9 +142,7 @@ class TreeNodeManager(models.Manager):
 
     def get_queryset(self):
         """Get QuerySet."""
-        return TreeNodeQuerySet(self.model, using=self._db).order_by(
-            "_depth", "priority"
-        )
+        return TreeNodeQuerySet(self.model, using=self._db).order_by("_path")
 
     def bulk_create(self, objs, *args, **kwargs):
         """Create objects in bulk and schedule tree rebuilds."""
