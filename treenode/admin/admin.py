@@ -57,7 +57,10 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
     form = TreeNodeForm
     importer_class = None
     exporter_class = None
-    ordering = []
+    # Tree rendering is only correct when nodes are displayed in path order.
+    # We force ordering to `_path` and ignore user sorting controls to keep
+    # parent-child relations visually stable in the admin tree.
+    ordering = ("_path",)
     change_list_template = "treenode/admin/treenode_changelist.html"
     import_export = True
 
@@ -152,6 +155,10 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
         qs = super().get_queryset(request)
         return qs.select_related('parent')\
             .order_by('_path')
+
+    def get_ordering(self, request):
+        """Return strict tree ordering independent from query parameters."""
+        return ("_path",)
 
     def get_list_display(self, request):
         """Get list_display."""

@@ -14,25 +14,8 @@
               </div>
               <div class="clear"></div>
             {% else %}
-              {% if h.sortable %}
-                <div class="sortoptions">
-                  {% if h.url_remove %}
-                    <a class="sortremove" href="{{ h.url_remove }}" title="{% translate 'Remove from sorting' %}"></a>
-                  {% endif %}
-                  {% if h.url_toggle %}
-                    <a href="{{ h.url_toggle }}" class="toggle {% if h.ascending %}ascending{% else %}descending{% endif %}" title="{% translate 'Toggle sorting' %}"></a>
-                  {% endif %}
-                </div>
-              {% else %}
-                <div class="sortoptions"></div>
-              {% endif %}
-              <div class="text">
-                {% if h.sortable %}
-                  <a href="{{ h.url_primary }}">{{ h.text|safe }}</a>
-                {% else %}
-                  <a href="#">{{ h.text|safe }}</a>
-                {% endif %}
-              </div>
+              <div class="sortoptions"></div>
+              <div class="text">{{ h.text|safe }}</div>
               <div class="clear"></div>
             {% endif %}
           </th>
