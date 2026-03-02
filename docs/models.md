@@ -127,6 +127,10 @@ This approach ensures full Django integration, efficient queries, and correct hi
     in the admin interface and elsewhere. To control sibling order, use the
     `sorting_field` attribute instead.
 
+!!! note
+    Canonical tree order in TreeNode is `_path` (with `id` used only as a
+    deterministic SQL tie-breaker where required by low-level queries).
+
 
 ---
 
