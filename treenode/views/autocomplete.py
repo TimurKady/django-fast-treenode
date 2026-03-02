@@ -32,12 +32,12 @@ class TreeNodeAutocompleteView(View):
 
         if q:
             field = getattr(model, "display_field", "id")
-            queryset = model.objects.filter(**{f"{field}__icontains": q})
+            queryset = model.objects.tree_ordered().filter(**{f"{field}__icontains": q})
         elif select_id:
             pk = int(select_id)
-            queryset = model.objects.filter(pk=pk)
+            queryset = model.objects.tree_ordered().filter(pk=pk)
         else:
-            queryset = model.objects.filter(parent__isnull=True)
+            queryset = model.objects.tree_ordered().filter(parent__isnull=True)
 
         results = [
             {
@@ -50,3 +50,6 @@ class TreeNodeAutocompleteView(View):
         ]
 
         return JsonResponse({"results": results})
+
+
+# The End
