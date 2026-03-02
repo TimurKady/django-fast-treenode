@@ -95,9 +95,10 @@ class AdminMixin(admin.ModelAdmin):
 
             rows.append({
                 "node_id": obj.pk,
-                "attrs": f'data-node-id="{obj.pk}" data-parent-id="{obj.parent_id or ""}" data-depth="{obj.get_depth()}" class="model-{self.model._meta.model_name} pk-{obj.pk}"',  # noqa: D501
+                "attrs": f'data-node-id="{obj.pk}" data-parent-id="{obj.parent_id or ""}" data-depth="{obj._depth}" data-path="{obj._path}" class="model-{self.model._meta.model_name} pk-{obj.pk}"',  # noqa: D501
                 "parent_id": obj.parent_id,
-                "depth": obj.get_depth(),
+                "depth": obj._depth,
+                "path": obj._path,
                 "cells": list(zip(row_data, td_classes)),
             })
         return rows

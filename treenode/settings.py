@@ -27,5 +27,9 @@ TREENODE_PAD_CHAR = getattr(settings, "TREENODE_PAD_CHAR", "'0'")
 # Optional JWT protection for API endpoints
 API_USE_JWT = getattr(settings, "TREENODE_API_USE_JWT", False)
 
+# Enforces server-side tree snapshot in admin and disables
+# localStorage-based UI state restoration.
+STRICT_ADMIN_MODE = getattr(settings, "TREENODE_STRICT_ADMIN_MODE", False)
+
 
 # The End

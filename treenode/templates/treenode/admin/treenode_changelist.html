@@ -18,7 +18,7 @@
     {% endif %}
   {% endblock %}
   
-  <div id="changelist" class="module filtered" data-model-label="{{ cl.opts.label }}">
+  <div id="changelist" class="module filtered" data-model-label="{{ cl.opts.label }}" data-strict-admin-mode="{% if strict_admin_mode %}1{% else %}0{% endif %}">
     <div class="changelist-form-container">
 
       {# Search bar + expand/collapse buttons #}

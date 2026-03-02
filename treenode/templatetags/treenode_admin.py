@@ -42,7 +42,10 @@ def tree_result_list(context, cl):
         cells.insert(0, checkbox)
 
         # Replace the toggle cell (3rd after inserting checkbox and move)
-        is_leaf = getattr(obj, "is_leaf", lambda: True)()
+        children_count = getattr(obj, "tn_children_count", None)
+        if children_count is None:
+            children_count = 0
+        is_leaf = children_count == 0
         toggle_html = format_html(
             '<td class="field-toggle">{}</td>',
             format_html(
@@ -54,7 +57,7 @@ def tree_result_list(context, cl):
             cells.pop(2)
         cells.insert(2, toggle_html)
 
-        depth = getattr(obj, "get_depth", lambda: 0)()
+        depth = getattr(obj, "_depth", 0)
         parent_id = getattr(obj, "parent_id", "")
         is_root = not parent_id
 
@@ -69,6 +72,7 @@ def tree_result_list(context, cl):
             "data-node-id": obj.pk,
             "data-parent-id": parent_id or "",
             "data-depth": depth,
+            "data-path": getattr(obj, "_path", ""),
         }
 
         rows.append({
