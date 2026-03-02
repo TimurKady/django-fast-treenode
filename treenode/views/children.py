@@ -16,13 +16,16 @@ from .common import get_model_from_request
 
 @method_decorator(staff_member_required, name='dispatch')
 class TreeChildrenView(View):
+    """Tree children endpoint view."""
+
     def get(self, request, *args, **kwargs):
+        """Return serialized children for the reference node."""
         model = get_model_from_request(request)
         reference_id = request.GET.get("reference_id")
         if not reference_id:
             return JsonResponse({"results": []})
 
-        obj = model.objects.filter(pk=reference_id).first()
+        obj = model.objects.tree_ordered().filter(pk=reference_id).first()
         if not obj or obj.is_leaf():
             return JsonResponse({"results": []})
 
@@ -33,7 +36,7 @@ class TreeChildrenView(View):
                 "level": node.get_depth(),
                 "is_leaf": node.is_leaf(),
             }
-            for node in obj.get_children_queryset()
+            for node in obj.get_children_queryset().order_by("_path")
         ]
         return JsonResponse({"results": results})
 

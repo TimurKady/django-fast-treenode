@@ -21,6 +21,10 @@ from ..cache import treenode_cache as cache
 class TreeNodeQuerySet(models.QuerySet):
     """TreeNodeModel QuerySet."""
 
+    def tree_ordered(self):
+        """Return queryset ordered by materialized path."""
+        return self.order_by("_path")
+
     def create(self, **kwargs):
         """Create an object."""
         obj = self.model(**kwargs)
@@ -140,9 +144,14 @@ class TreeNodeQuerySet(models.QuerySet):
 class TreeNodeManager(models.Manager):
     """Tree Manager Class."""
 
+    def tree_ordered(self, queryset=None):
+        """Return a tree-ordered queryset."""
+        base_queryset = queryset if queryset is not None else self.get_queryset()
+        return base_queryset.order_by("_path")
+
     def get_queryset(self):
         """Get QuerySet."""
-        return TreeNodeQuerySet(self.model, using=self._db).order_by("_path")
+        return TreeNodeQuerySet(self.model, using=self._db).tree_ordered()
 
     def bulk_create(self, objs, *args, **kwargs):
         """Create objects in bulk and schedule tree rebuilds."""

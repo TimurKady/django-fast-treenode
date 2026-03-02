@@ -69,24 +69,24 @@ class TreeNodeRootsMixin(models.Model):
     @classmethod
     def get_roots_queryset(cls):
         """Get root nodes queryset with preloaded children."""
-        return cls.objects.filter(parent_id__isnull=True)
+        return cls.objects.tree_ordered().filter(parent_id__isnull=True)
 
     @classmethod
     def get_roots_pks(cls):
         """Get a list with all root nodes."""
-        queryset = cls.objects.filter(parent_id__isnull=True)
+        queryset = cls.get_roots_queryset()
         return queryset.values_list("id", flat=True)
 
     @classmethod
     @cached_method
     def get_roots(cls):
         """Get a list with all root nodes."""
-        return list(cls.objects.filter(parent__isnull=True))
+        return list(cls.get_roots_queryset())
 
     @classmethod
     def get_roots_count(cls):
         """Get a list with all root nodes."""
-        return cls.objects.filter(parent__isnull=True).count()
+        return cls.get_roots_queryset().count()
 
     @classmethod
     def get_first_root(cls):
