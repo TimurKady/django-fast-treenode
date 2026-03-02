@@ -29,6 +29,7 @@ Email: timurkady@yandex.com
 
 from django.contrib import admin
 from django.db import models
+from django.db.models import Count
 from django.urls import reverse
 from django.utils.html import escape
 from django.utils.safestring import mark_safe
@@ -38,6 +39,7 @@ from .mixin import AdminMixin
 from ..forms import TreeNodeForm
 from ..models import TreeNodeModel
 from ..widgets import TreeWidget
+from ..settings import STRICT_ADMIN_MODE
 from .importer import TreeNodeImporter
 from .exporter import TreeNodeExporter
 
@@ -95,7 +97,12 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
 
     def toggle(self, obj):
         """Toggle column."""
-        if obj.get_children_count() > 0:
+        children_count = getattr(obj, "tn_children_count", None)
+
+        if children_count is None:
+            children_count = self.model.objects.filter(parent_id=obj.pk).count()
+
+        if children_count > 0:
             return mark_safe(
                 f'<button class="treenode-toggle" data-node-id="{obj.pk}">►</button>'  # noqa
             )
@@ -153,8 +160,9 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
     def get_queryset(self, request):
         """Get queryset."""
         qs = super().get_queryset(request)
-        return qs.select_related('parent')\
-            .order_by('_path')
+        return qs.select_related('parent').annotate(
+            tn_children_count=Count('children', distinct=True)
+        ).order_by('_path')
 
     def get_ordering(self, request):
         """Return strict tree ordering independent from query parameters."""
@@ -202,7 +210,7 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
         - For accordion mode: add indents and icons.
         - For breadcrumbs mode: display breadcrumb path.
         """
-        level = obj.get_depth()
+        level = getattr(obj, "_depth", 0)
         display_field = getattr(obj, "display_field", None)
         edit_url = reverse(
             f"admin:{obj._meta.app_label}_{obj._meta.model_name}_change",
@@ -214,7 +222,10 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
         closing = ""
 
         if self.treenode_display_mode == self.TREENODE_DISPLAY_MODE_ACCORDION:
-            icon = "📄 " if obj.is_leaf() else "📁 "
+            children_count = getattr(obj, "tn_children_count", None)
+            if children_count is None:
+                children_count = self.model.objects.filter(parent_id=obj.pk).count()
+            icon = "📄 " if children_count == 0 else "📁 "
             text = getattr(obj, display_field, str(obj))
             padding = f'<span style="padding-left: {level * 1.5}em;">'
             closing = "</span>"
@@ -228,6 +239,13 @@ class TreeNodeModelAdmin(AdminMixin, admin.ModelAdmin):
 
         content = f'{padding}{icon}<a href="{edit_url}">{escape(text)}</a>{closing}'  # noqa
         return mark_safe(content)
+
+
+    def changelist_view(self, request, extra_context=None):
+        """Inject strict-admin-mode flag for client-side tree state behavior."""
+        context = dict(extra_context or {})
+        context["strict_admin_mode"] = STRICT_ADMIN_MODE
+        return super().changelist_view(request, extra_context=context)
 
     def get_list_per_page(self, request):
         """Get list per page."""

@@ -79,6 +79,7 @@
     dropContext: null,
     isMoving: false,
     storageKey: "treenode_expanded",
+    strictAdminMode: false,
 
     init: function() {
       this.$tableBody = $('table#result_list tbody');
@@ -88,10 +89,12 @@
     },
 
     configureStorageKey: function() {
-      const explicitLabel = $("#changelist").data("model-label");
+      const $changelist = $("#changelist");
+      const explicitLabel = $changelist.data("model-label");
       const fallbackLabel = $("body").data("app-label") || "default";
       const label = explicitLabel || fallbackLabel;
       this.storageKey = `treenode_expanded:${label}`;
+      this.strictAdminMode = Boolean($changelist.data("strict-admin-mode"));
     },
 
     getTreeSignature: function() {
@@ -99,11 +102,12 @@
         return "";
       }
 
-      return this.$tableBody.find("tr").map(function() {
+      return this.$tableBody.find("tr").map(function(index) {
         const $row = $(this);
         const nodeId = $row.data("node-id") || "";
         const parentId = $row.data("parent-id") || "";
-        return `${nodeId}:${parentId}`;
+        const path = $row.data("path") || "";
+        return `${index}:${nodeId}:${parentId}:${path}`;
       }).get().join("|");
     },
     
@@ -136,6 +140,11 @@
     
     // Restore expanded nodes from localStorage
     restoreTreeState: function() {
+      if (this.strictAdminMode) {
+        localStorage.removeItem(this.storageKey);
+        return;
+      }
+
       const raw = localStorage.getItem(this.storageKey);
       if (!raw) {
         return;
@@ -387,6 +396,8 @@
         position: position
       };
 
+      let moveSucceeded = false;
+
       $.ajax({
         url: 'move/',
         method: 'POST',
@@ -395,6 +406,7 @@
         success: function(data) {
           const msg = data.message || "Node moved successfully.";
           $("<li class='success'>" + msg + "</li>").appendTo(".messagelist");
+          moveSucceeded = true;
         },
         error: function(xhr, status, error) {
           const fallback = "Error moving node.";
@@ -402,6 +414,9 @@
         },
         complete: function() {
           ChangeList.isMoving = false;
+          if (moveSucceeded) {
+            localStorage.removeItem(ChangeList.storageKey);
+          }
           location.reload();
         }
       });
