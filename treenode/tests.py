@@ -16,6 +16,8 @@ from tests.models import TestModel
 from treenode.admin.exporter import TreeNodeExporter
 from treenode.admin.importer import TreeNodeImporter
 from treenode.admin.mixin import AdminMixin
+
+from treenode.admin.importer import TreeNodeImporter
 from treenode.templatetags.treenode_admin import tree_result_list
 
 

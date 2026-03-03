@@ -133,27 +133,38 @@ class TreeNodeImporter:
                 level = row.get("_depth", 0)
                 rows_by_level.setdefault(level, []).append(row)
 
-            id_map = {}
             for depth in sorted(rows_by_level.keys()):
                 to_create = []
                 to_update = []
                 level_rows = rows_by_level[depth]
-                existing_map = self._get_existing_objects_map(level_rows)
+
+                row_ids = [row.get("id") for row in level_rows if row.get("id") is not None]
+                existing_by_id = self.model.objects.in_bulk(row_ids)
 
                 for row in rows_by_level[depth]:
                     pk = row.get("id")
+                    row_data = dict(row)
 
-                    self._normalize_parent_reference(row, id_map)
+                    if "parent" in row_data and (row_data["parent"] == "" or row_data["parent"] is None):
+                        row_data["parent"] = None
+
+                    if "parent" in row_data:
+                        temp_parent_id = row_data.pop("parent")
+                        if temp_parent_id is not None:
+                            row_data["parent_id"] = temp_parent_id
 
                     try:
-                        existing_obj = existing_map.get(str(pk))
+                        existing_obj = existing_by_id.get(pk)
                         if existing_obj is not None:
-                            for key, value in row.items():
-                                setattr(existing_obj, key, value)
+                            for field, value in row_data.items():
+                                if field in {"id", "_depth", "_path"}:
+                                    continue
+                                setattr(existing_obj, field, value)
+
                             existing_obj.full_clean()
                             to_update.append(existing_obj)
                         else:
-                            obj = self.model(**row)
+                            obj = self.model(**row_data)
                             obj.full_clean()
                             to_create.append(obj)
                     except ValidationError as e:
@@ -161,16 +172,11 @@ class TreeNodeImporter:
                             f"Validation error for {pk}: {e}")
 
                 created = self.model.objects.bulk_create(to_create)
-                for obj in created:
-                    id_map[obj.pk] = obj.pk
                 self.result["created"] += len(created)
 
-                if to_update:
-                    update_fields = self._get_update_fields(to_update)
-                    self.model.objects.bulk_update(to_update, update_fields)
-                    for obj in to_update:
-                        id_map[obj.pk] = obj.pk
-                    self.result["updated"] += len(to_update)
+                for obj in to_update:
+                    obj.save()
+                self.result["updated"] += len(to_update)
 
         self.model.tasks.add("update", None)
         cache.invalidate(self.model._meta.label)
