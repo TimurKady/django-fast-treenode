@@ -133,34 +133,50 @@ class TreeNodeImporter:
                 level = row.get("_depth", 0)
                 rows_by_level.setdefault(level, []).append(row)
 
-            id_map = {}
             for depth in sorted(rows_by_level.keys()):
                 to_create = []
+                to_update = []
+                level_rows = rows_by_level[depth]
+
+                row_ids = [row.get("id") for row in level_rows if row.get("id") is not None]
+                existing_by_id = self.model.objects.in_bulk(row_ids)
+
                 for row in rows_by_level[depth]:
                     pk = row.get("id")
+                    row_data = dict(row)
 
-                    if "parent" in row and (row["parent"] == "" or row["parent"] is None):
-                        row["parent"] = None
+                    if "parent" in row_data and (row_data["parent"] == "" or row_data["parent"] is None):
+                        row_data["parent"] = None
 
-                    if "parent" in row:
-                        temp_parent_id = row.pop("parent")
+                    if "parent" in row_data:
+                        temp_parent_id = row_data.pop("parent")
                         if temp_parent_id is not None:
-                            # Используем уже созданный ID родителя
-                            row["parent_id"] = id_map.get(
-                                temp_parent_id, temp_parent_id)
+                            row_data["parent_id"] = temp_parent_id
 
                     try:
-                        obj = self.model(**row)
-                        obj.full_clean()
-                        to_create.append(obj)
+                        existing_obj = existing_by_id.get(pk)
+                        if existing_obj is not None:
+                            for field, value in row_data.items():
+                                if field in {"id", "_depth", "_path"}:
+                                    continue
+                                setattr(existing_obj, field, value)
+
+                            existing_obj.full_clean()
+                            to_update.append(existing_obj)
+                        else:
+                            obj = self.model(**row_data)
+                            obj.full_clean()
+                            to_create.append(obj)
                     except ValidationError as e:
                         self.result["errors"].append(
                             f"Validation error for {pk}: {e}")
 
                 created = self.model.objects.bulk_create(to_create)
-                for obj in created:
-                    id_map[obj.pk] = obj.pk
                 self.result["created"] += len(created)
+
+                for obj in to_update:
+                    obj.save()
+                self.result["updated"] += len(to_update)
 
         self.model.tasks.add("update", None)
         cache.invalidate(self.model._meta.label)
