@@ -9,9 +9,12 @@ from django.db import DatabaseError
 from django.template import Context
 from django.template.loader import render_to_string
 from django.test import Client, RequestFactory, TestCase, override_settings
+from django.core.files.uploadedfile import SimpleUploadedFile
 
 from tests.models import TestModel
 from treenode.admin.mixin import AdminMixin
+
+from treenode.admin.importer import TreeNodeImporter
 from treenode.templatetags.treenode_admin import tree_result_list
 
 
@@ -231,6 +234,49 @@ class AdminMoveViewTests(TestCase):
         self.assertEqual(moved_leaf._depth, right_node._depth + 1)
         self.assertTrue(moved_leaf._path.startswith(f"{right_node._path}."))
         self.assertEqual(moved_leaf.priority, right_children.index(moved_leaf))
+
+
+class TreeNodeImporterTests(TestCase):
+    """Tests for import upsert behavior with explicit identifiers."""
+
+    @classmethod
+    def setUpTestData(cls):
+        """Create initial records for importer update scenario."""
+        cls.root = TestModel.objects.create(name="root-import", priority=0)
+        cls.child = TestModel.objects.create(
+            id=33,
+            name="child-old",
+            parent=cls.root,
+            priority=1,
+        )
+
+    def test_importer_updates_existing_object_when_id_present(self):
+        """Ensure importer updates existing row instead of trying to create duplicate PK."""
+        import_payload = [
+            {
+                "id": self.child.pk,
+                "name": "child-new",
+                "parent": self.root.pk,
+                "priority": 5,
+            }
+        ]
+        import_file = SimpleUploadedFile(
+            "tree.json",
+            json.dumps(import_payload).encode("utf-8"),
+            content_type="application/json",
+        )
+
+        importer = TreeNodeImporter(TestModel, import_file, "json")
+        importer.parse()
+        result = importer.import_tree()
+
+        self.child.refresh_from_db()
+
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(result["updated"], 1)
+        self.assertEqual(result["errors"], [])
+        self.assertEqual(self.child.name, "child-new")
+        self.assertEqual(self.child.priority, 5)
 
 
 # The End
