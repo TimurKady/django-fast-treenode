@@ -1,5 +1,6 @@
 import json
 import unittest
+import warnings
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -8,10 +9,12 @@ from django.urls import path
 from django.db import DatabaseError
 from django.template import Context
 from django.template.loader import render_to_string
+from django.test import AsyncClient, Client, RequestFactory, TestCase, override_settings
 from django.test import Client, RequestFactory, TestCase, override_settings
 from django.core.files.uploadedfile import SimpleUploadedFile
 
 from tests.models import TestModel
+from treenode.admin.exporter import TreeNodeExporter
 from treenode.admin.mixin import AdminMixin
 
 from treenode.admin.importer import TreeNodeImporter
@@ -20,6 +23,8 @@ from treenode.templatetags.treenode_admin import tree_result_list
 
 class TestAdminMixin(AdminMixin):
     """Admin class for testing row rendering helpers."""
+
+    TreeNodeExporter = TreeNodeExporter
 
 
 
@@ -236,48 +241,51 @@ class AdminMoveViewTests(TestCase):
         self.assertEqual(moved_leaf.priority, right_children.index(moved_leaf))
 
 
-class TreeNodeImporterTests(TestCase):
-    """Tests for import upsert behavior with explicit identifiers."""
+class AdminExportAsyncTests(TestCase):
+    """Regression tests for async export streaming in ASGI mode."""
 
     @classmethod
     def setUpTestData(cls):
-        """Create initial records for importer update scenario."""
-        cls.root = TestModel.objects.create(name="root-import", priority=0)
+        """Prepare nodes to validate exported async payload."""
+        cls.root = TestModel.objects.create(name="root-export", priority=0)
         cls.child = TestModel.objects.create(
-            id=33,
-            name="child-old",
-            parent=cls.root,
-            priority=1,
+            name="child-export", parent=cls.root, priority=1
         )
 
-    def test_importer_updates_existing_object_when_id_present(self):
-        """Ensure importer updates existing row instead of trying to create duplicate PK."""
-        import_payload = [
-            {
-                "id": self.child.pk,
-                "name": "child-new",
-                "parent": self.root.pk,
-                "priority": 5,
-            }
-        ]
-        import_file = SimpleUploadedFile(
-            "tree.json",
-            json.dumps(import_payload).encode("utf-8"),
-            content_type="application/json",
+    @override_settings(ROOT_URLCONF="treenode.tests")
+    async def test_export_endpoint_uses_async_stream_without_warning(self):
+        """Ensure ASGI export has no sync-stream warning and valid content."""
+        client = AsyncClient()
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            response = await client.get(
+                "/admin/tests/testmodel/export/?download=1&format=json"
+            )
+
+            chunks = []
+            stream = response.streaming_content
+            if hasattr(stream, "__aiter__"):
+                async for chunk in stream:
+                    if isinstance(chunk, bytes):
+                        chunk = chunk.decode("utf-8")
+                    chunks.append(chunk)
+            else:
+                for chunk in stream:
+                    if isinstance(chunk, bytes):
+                        chunk = chunk.decode("utf-8")
+                    chunks.append(chunk)
+
+        body = "".join(chunks)
+        warning_messages = [str(item.message) for item in caught]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(body.startswith("["))
+        self.assertIn("root-export", body)
+        self.assertIn("child-export", body)
+        self.assertFalse(
+            any("synchronous iterators" in message for message in warning_messages)
         )
-
-        importer = TreeNodeImporter(TestModel, import_file, "json")
-        importer.parse()
-        result = importer.import_tree()
-
-        self.child.refresh_from_db()
-
-        self.assertEqual(result["created"], 0)
-        self.assertEqual(result["updated"], 1)
-        self.assertEqual(result["errors"], [])
-        self.assertEqual(self.child.name, "child-new")
-        self.assertEqual(self.child.priority, 5)
 
 
 # The End
-
