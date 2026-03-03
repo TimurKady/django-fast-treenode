@@ -336,7 +336,7 @@ class AdminMixin(admin.ModelAdmin):
                 filename=filename,
                 fileformat=fmt
             )
-            return exporter.process_record()
+            return exporter.process_record(request=request)
 
         return render(
             request,

@@ -1,22 +1,28 @@
 import json
 import unittest
+import warnings
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from django.contrib.admin.sites import AdminSite
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import path
 from django.db import DatabaseError
 from django.template import Context
 from django.template.loader import render_to_string
-from django.test import Client, RequestFactory, TestCase, override_settings
+from django.test import AsyncClient, Client, RequestFactory, TestCase, override_settings
 
 from tests.models import TestModel
+from treenode.admin.exporter import TreeNodeExporter
+from treenode.admin.importer import TreeNodeImporter
 from treenode.admin.mixin import AdminMixin
 from treenode.templatetags.treenode_admin import tree_result_list
 
 
 class TestAdminMixin(AdminMixin):
     """Admin class for testing row rendering helpers."""
+
+    TreeNodeExporter = TreeNodeExporter
 
 
 
@@ -233,5 +239,86 @@ class AdminMoveViewTests(TestCase):
         self.assertEqual(moved_leaf.priority, right_children.index(moved_leaf))
 
 
-# The End
+class AdminExportAsyncTests(TestCase):
+    """Regression tests for async export streaming in ASGI mode."""
 
+    @classmethod
+    def setUpTestData(cls):
+        """Prepare nodes to validate exported async payload."""
+        cls.root = TestModel.objects.create(name="root-export", priority=0)
+        cls.child = TestModel.objects.create(
+            name="child-export", parent=cls.root, priority=1
+        )
+
+    @override_settings(ROOT_URLCONF="treenode.tests")
+    async def test_export_endpoint_uses_async_stream_without_warning(self):
+        """Ensure ASGI export has no sync-stream warning and valid content."""
+        client = AsyncClient()
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            response = await client.get(
+                "/admin/tests/testmodel/export/?download=1&format=json"
+            )
+
+            chunks = []
+            stream = response.streaming_content
+            if hasattr(stream, "__aiter__"):
+                async for chunk in stream:
+                    if isinstance(chunk, bytes):
+                        chunk = chunk.decode("utf-8")
+                    chunks.append(chunk)
+            else:
+                for chunk in stream:
+                    if isinstance(chunk, bytes):
+                        chunk = chunk.decode("utf-8")
+                    chunks.append(chunk)
+
+        body = "".join(chunks)
+        warning_messages = [str(item.message) for item in caught]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(body.startswith("["))
+        self.assertIn("root-export", body)
+        self.assertIn("child-export", body)
+        self.assertFalse(
+            any("synchronous iterators" in message for message in warning_messages)
+        )
+
+
+class TreeNodeImporterTests(TestCase):
+    """Regression tests for tree importer behavior."""
+
+    @classmethod
+    def setUpTestData(cls):
+        """Create fixture for update-by-existing-pk importer scenario."""
+        cls.existing = TestModel.objects.create(name="import-old", priority=3)
+
+    def test_import_tree_updates_existing_row_by_pk(self):
+        """Ensure importer updates row when payload contains an existing PK."""
+        payload = json.dumps([
+            {
+                "id": self.existing.pk,
+                "name": "import-new",
+                "priority": 3,
+                "parent": None,
+            }
+        ])
+        upload = SimpleUploadedFile(
+            "tree.json",
+            payload.encode("utf-8"),
+            content_type="application/json",
+        )
+
+        importer = TreeNodeImporter(TestModel, upload, "json")
+        importer.parse()
+        result = importer.import_tree()
+
+        self.existing.refresh_from_db()
+
+        self.assertEqual(result["created"], 0)
+        self.assertEqual(result["updated"], 1)
+        self.assertEqual(self.existing.name, "import-new")
+
+
+# The End

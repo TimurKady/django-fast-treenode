@@ -136,23 +136,26 @@ class TreeNodeImporter:
             id_map = {}
             for depth in sorted(rows_by_level.keys()):
                 to_create = []
+                to_update = []
+                level_rows = rows_by_level[depth]
+                existing_map = self._get_existing_objects_map(level_rows)
+
                 for row in rows_by_level[depth]:
                     pk = row.get("id")
 
-                    if "parent" in row and (row["parent"] == "" or row["parent"] is None):
-                        row["parent"] = None
-
-                    if "parent" in row:
-                        temp_parent_id = row.pop("parent")
-                        if temp_parent_id is not None:
-                            # Используем уже созданный ID родителя
-                            row["parent_id"] = id_map.get(
-                                temp_parent_id, temp_parent_id)
+                    self._normalize_parent_reference(row, id_map)
 
                     try:
-                        obj = self.model(**row)
-                        obj.full_clean()
-                        to_create.append(obj)
+                        existing_obj = existing_map.get(str(pk))
+                        if existing_obj is not None:
+                            for key, value in row.items():
+                                setattr(existing_obj, key, value)
+                            existing_obj.full_clean()
+                            to_update.append(existing_obj)
+                        else:
+                            obj = self.model(**row)
+                            obj.full_clean()
+                            to_create.append(obj)
                     except ValidationError as e:
                         self.result["errors"].append(
                             f"Validation error for {pk}: {e}")
@@ -162,10 +165,48 @@ class TreeNodeImporter:
                     id_map[obj.pk] = obj.pk
                 self.result["created"] += len(created)
 
+                if to_update:
+                    update_fields = self._get_update_fields(to_update)
+                    self.model.objects.bulk_update(to_update, update_fields)
+                    for obj in to_update:
+                        id_map[obj.pk] = obj.pk
+                    self.result["updated"] += len(to_update)
+
         self.model.tasks.add("update", None)
         cache.invalidate(self.model._meta.label)
 
         return self.result
+
+    def _get_existing_objects_map(self, rows):
+        """Return existing objects keyed by string PK for current level."""
+        ids = [row.get("id") for row in rows if row.get("id") not in (None, "")]
+        if not ids:
+            return {}
+
+        existing_objects = self.model.objects.filter(pk__in=ids)
+        return {str(obj.pk): obj for obj in existing_objects}
+
+    def _normalize_parent_reference(self, row, id_map):
+        """Normalize parent column to parent_id and resolve temporary IDs."""
+        if "parent" in row and (row["parent"] == "" or row["parent"] is None):
+            row["parent"] = None
+
+        if "parent" in row:
+            temp_parent_id = row.pop("parent")
+            if temp_parent_id is not None:
+                row["parent_id"] = id_map.get(temp_parent_id, temp_parent_id)
+
+    def _get_update_fields(self, to_update):
+        """Return updatable model field names for bulk_update operation."""
+        if not to_update:
+            return []
+
+        blocked_fields = {"_path", "_depth"}
+        model_fields = [
+            field.attname for field in self.model._meta.fields
+            if not field.primary_key and field.attname not in blocked_fields
+        ]
+        return model_fields
 
 
 # The End
