@@ -536,7 +536,7 @@ cls.get_tree(instance=None)
 
 If instance is passed, returns a subtree rooted at instance (using `get_descendants_queryset`), if not passed, builds a tree for all nodes (loads all records in one query).
 
- #### get_tree_json(cls, instance=None):
+#### get_tree_json(cls, instance=None)
 Represent the **tree as a JSON-compatible string**.
 
 ```python
