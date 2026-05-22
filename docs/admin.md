@@ -21,23 +21,24 @@ class CategoryAdmin(TreeNodeModelAdmin):
     search_fields = ("name",)
 ```
 
-The tree structure in the admin panel **loads dynamically as nodes are expanded**. This allows handling **large datasets** efficiently, preventing performance issues.
+The changelist renders the full tree on the initial request and **expands or collapses nodes on the client without additional AJAX calls**. All nodes for the current changelist page are already in the DOM; the accordion only toggles their visibility.
 
 TreeNode uses `_path` as the canonical tree order in admin responses and queryset traversal, so nodes are rendered in hierarchical order consistently.
 
 You can choose from three display modes:
 
-- **`TREENODE_DISPLAY_MODE_ACCORDION` (default)**  
-  Expands/collapses nodes dynamically.
-- **`TREENODE_DISPLAY_MODE_BREADCRUMBS`**  
+- **`TREENODE_DISPLAY_MODE_ACCORDION` (default)**
+  Toggles client-side expand/collapse of already-rendered nodes.
+- **`TREENODE_DISPLAY_MODE_BREADCRUMBS`**
   Displays the tree as a sequence of **breadcrumbs**, making it easy to navigate.
 
 The accordion mode is **always active**, and the setting only affects how nodes are displayed.
 
-**Why Dynamic Loading**:  Traditional pagination does not work well for **deep hierarchical trees**, as collapsed trees may contain a **huge number of nodes**, which is in the hundreds of thousands. The dynamic approach allows efficient loading, reducing database load while keeping large trees manageable.
+> **Note**
+> Earlier versions of this page described lazy-loading of children over AJAX. That is not the shipped behavior: the changelist does not lazy-load tree nodes from the server, so the full page is still bounded by Django's standard changelist pagination. Lazy-loading of tree nodes in the changelist is tracked as a separate feature request.
 
 #### Search Functionality
-The search bar helps quickly locate nodes within large trees. As you type, **an AJAX request retrieves up to 20 results** based on relevance. If you don’t find the desired node, keep typing to refine the search until fewer than 20 results remain.
+The search bar helps quickly locate nodes within large trees. As you type, **an AJAX request retrieves up to 20 results** based on relevance. If you don't find the desired node, keep typing to refine the search until fewer than 20 results remain. The search endpoint is one of the places where the admin does use AJAX; the changelist expand/collapse described above does not.
 
 ### Working with Forms
 
